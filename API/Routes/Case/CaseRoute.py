@@ -9,6 +9,7 @@ from Classes.Case.CaseClass import Case
 from Classes.Case.UpdateCaseClass import UpdateCase
 from Classes.Case.ImportTemplate import ImportTemplate
 from Classes.Base.SyncS3 import SyncS3
+from utils import validate_json_fields
 
 case_api = Blueprint('CaseRoute', __name__)
 
@@ -69,6 +70,9 @@ def getDesc():
 @case_api.route("/copyCase", methods=['POST'])
 def copy():
     try:
+        err, code = validate_json_fields('casename')
+        if err:
+            return err, code
         case = request.json['casename']
         active_case = session.get('osycase')
 
@@ -107,6 +111,9 @@ def copy():
 @case_api.route("/deleteCase", methods=['POST'])
 def deleteCase():
     try:
+        err, code = validate_json_fields('casename')
+        if err:
+            return err, code
         case = request.json['casename']
         active_case = session.get('osycase')
 
@@ -182,6 +189,9 @@ def resultsExists():
 @case_api.route("/saveParamFile", methods=['POST'])
 def saveParamFile():
     try:
+        err, code = validate_json_fields('ParamData', 'VarData')
+        if err:
+            return err, code
         ParamData = request.json['ParamData']
         VarData = request.json['VarData']
 
@@ -201,6 +211,9 @@ def saveParamFile():
 @case_api.route("/saveScOrder", methods=['POST'])
 def saveScOrder():
     try:
+        err, code = validate_json_fields('data', 'casename')
+        if err:
+            return err, code
         data = request.json['data']
         case = request.json['casename']
         genDataPath = Path(Config.DATA_STORAGE, case, 'genData.json')
@@ -240,7 +253,12 @@ def updateData():
 @case_api.route("/saveCase", methods=['POST'])
 def saveCase():
     try:
+        err, code = validate_json_fields('data')
+        if err:
+            return err, code
         genData = request.json['data']
+        if not isinstance(genData, dict) or genData.get('osy-casename') is None:
+            return jsonify({"error": "Missing required field: data.osy-casename"}), 400
         casename = genData['osy-casename']
         case = session.get('osycase', None)
 
