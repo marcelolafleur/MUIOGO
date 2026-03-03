@@ -42,6 +42,21 @@ os.chmod(DATA_STORAGE, 0o777)
 HEROKU_DEPLOY = 0
 AWS_SYNC = 0
 
+# API base URL: configurable via MUIOGO_API_URL env var.
+# Defaults to window.location.origin on the frontend when not set.
+API_BASE_URL = os.environ.get("MUIOGO_API_URL", "")
+
+# CORS allowed origins: configurable via MUIOGO_CORS_ORIGINS env var.
+# Accepts a comma-separated list. Defaults to localhost origins for local dev.
+CORS_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get(
+        "MUIOGO_CORS_ORIGINS",
+        "http://127.0.0.1:5002,http://localhost:5002,http://127.0.0.1,http://localhost"
+    ).split(",")
+    if origin.strip()
+]
+
 PINNED_COLUMNS = ('Sc', 'Tech', 'Comm', 'Emis','Stg', 'Ts', 'MoO', 'UnitId', 'Se','Dt', 'Dtb', 'paramName','TechName', 'CommName', 'EmisName', 'ConName', 'MoId')
 
 TECH_GROUPS = ('RYT', 'RYTM', 'RYTC', 'RYTCn', 'RYTCM', 'RYTE', 'RYTEM', 'RYTTs')

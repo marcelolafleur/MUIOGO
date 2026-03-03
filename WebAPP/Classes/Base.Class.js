@@ -3,21 +3,15 @@ import { Html } from "./Html.Class.js";
 import { SyncS3 } from "./SyncS3.Class.js";
 
 export class Base {
-    static HEROKU = 0;
     static AWS_SYNC = 0;
     //init sync flag to pull from S3 only one time when visit home page
     static INIT_SYNC = 1;
 
     static apiUrl() {
-        let apiUrl
-        if (this.HEROKU == 0) {
-            //localhost
-            apiUrl = "http://127.0.0.1:5002/";
-        } else {
-            //HEROKU
-            apiUrl = "https://osemosys.herokuapp.com/";
-        }
-        return apiUrl
+        const meta = document.querySelector('meta[name="api-base-url"]');
+        const url = meta ? meta.content : '';
+        // Use the meta tag value if set, otherwise fall back to current origin
+        return url ? url.replace(/\/$/, '') + '/' : `${window.location.origin}/`;
     }
 
     static initSyncS3() {
