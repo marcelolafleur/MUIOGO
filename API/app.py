@@ -56,14 +56,6 @@ app.register_blueprint(syncs3_api)
 
 CORS(app, origins=Config.CORS_ORIGINS, supports_credentials=True)
 
-@app.after_request
-def add_headers(response):
-    # CORS origin is now handled by flask-cors via Config.CORS_ORIGINS.
-    # We still set credentials and headers for compatibility.
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-    return response
-
 # @app.errorhandler(CustomException)
 # def handle_invalid_usage(error):
 #     response = jsonify(error.to_dict())
