@@ -19,15 +19,28 @@ S3_SECRET = ""
 
 ALLOWED_EXTENSIONS = set(['zip', 'application/zip'])
 ALLOWED_EXTENSIONS_XLS = set(['xls', 'xlsx'])
+# -------------------------
+# FIX: Make paths independent of working directory
+# -------------------------
 
-UPLOAD_FOLDER = Path('WebAPP')
-WebAPP_PATH = Path('WebAPP')
-DATA_STORAGE = Path("WebAPP", 'DataStorage')
-CLASS_FOLDER = Path("WebAPP", 'Classes')
-EXTRACT_FOLDER = Path("")
-SOLVERs_FOLDER = Path('WebAPP', 'SOLVERs')
+# This file is in: API/Classes/Base/Config.py
+# So project root is 3 levels up
+BASE_DIR = Path(__file__).resolve().parents[3]
 
+WEBAPP_PATH = BASE_DIR / "WebAPP"
 
+UPLOAD_FOLDER = WEBAPP_PATH
+DATA_STORAGE = WEBAPP_PATH / "DataStorage"
+CLASS_FOLDER = WEBAPP_PATH / "Classes"
+SOLVERs_FOLDER = WEBAPP_PATH / "SOLVERs"
+EXTRACT_FOLDER = BASE_DIR
+
+# Ensure DataStorage exists
+DATA_STORAGE.mkdir(parents=True, exist_ok=True)
+
+# Validate writability instead of forcing permissions
+if not os.access(DATA_STORAGE, os.W_OK):
+    raise PermissionError(f"Data storage path is not writable: {DATA_STORAGE}")
 #absolute paths
 # OSEMOSYS_ROOT = os.path.abspath(os.getcwd())
 # UPLOAD_FOLDER = Path(OSEMOSYS_ROOT, 'WebAPP')
@@ -36,8 +49,6 @@ SOLVERs_FOLDER = Path('WebAPP', 'SOLVERs')
 # CLASS_FOLDER = Path(OSEMOSYS_ROOT, "WebAPP", 'Classes')
 # EXTRACT_FOLDER = Path(OSEMOSYS_ROOT, "")
 # SOLVERs_FOLDER = Path(OSEMOSYS_ROOT, 'WebAPP', 'SOLVERs')
-
-os.chmod(DATA_STORAGE, 0o777)
 
 HEROKU_DEPLOY = 0
 AWS_SYNC = 0
@@ -65,84 +76,6 @@ EMIS_GROUPS = ('RYE', 'RYTE', 'RYTEM')
 
 SINGLE_TECH_GROUPS = ['RT']
 SINGLE_EMIS_GROUPS = ['RE']
-
-DEFAULT_F ={
-    "R"    : 'default_R',     
-    "RT"   : 'default_RT',     
-    "RY"   : 'default_RY',     
-    "RE"   : 'default_RE',  
-    "RS"   : 'default_RS', 
-    "RYCn" : 'default_RYCn', 
-    "RYTs" : 'default_RYTs', 
-    "RYDtb" : 'default_RYDtb',  
-    "RYSeDt" : 'default_RYSeDt',   
-    "RYT"  : 'default_RYT',
-    "RYS"  : 'default_RYS',
-    "RYTCn": 'default_RYTCn',    
-    "RYTM" : 'default_RYTM',     
-    "RYC"  : 'default_RYC',     
-    "RYE"  : 'default_RYE',     
-    "RYTC" : 'default_RYTC',  
-    "RYTCM": 'default_RYTCM' , 
-    "RTSM": 'default_RTSM' ,   
-    "RYTE" : 'default_RYTE',  
-    "RYTEM": 'default_RYTEM' , 
-    "RYTM" : 'default_RYTM',     
-    "RYTTs": 'default_RYTTs',     
-    "RYCTs": 'default_RYCTs'
-}
-
-UPDATE_F ={
-    "R"    : 'update_R',     
-    "RT"   : 'update_RT',     
-    "RY"   : 'update_RY',     
-    "RE"   : 'update_RE', 
-    "RS"   : 'update_RS',
-    "RYCn" : 'update_RYCn',
-    "RYTs" : 'update_RYTs', 
-    "RYDtb" : 'update_RYDtb', 
-    "RYSeDt" : 'update_RYSeDt',    
-    "RYT"  : 'update_RYT', 
-    "RYS"  : 'update_RYS',  
-    "RYTCn": 'update_RYTCn',
-    "RYTM" : 'update_RYTM',     
-    "RYC"  : 'update_RYC',     
-    "RYE"  : 'update_RYE',     
-    "RYTC" : 'update_RYTC',  
-    "RYTCM": 'update_RYTCM' ,  
-    "RTSM": 'update_RTSM' ,   
-    "RYTE" : 'update_RYTE',  
-    "RYTEM": 'update_RYTEM' , 
-    "RYTM" : 'update_RYTM',     
-    "RYTTs": 'update_RYTTs',     
-    "RYCTs": 'update_RYCTs'
-}
-
-GEN_F ={
-    "R"    : 'gen_R',   
-    "RT"   : 'gen_RT',     
-    "RY"   : 'gen_RY',     
-    "RE"   : 'gen_RE', 
-    "RS"   : 'gen_RS',
-    "RYCn" : 'gen_RYCn', 
-    "RYTCn": 'gen_RYTCn',   
-    "RYTs" : 'gen_RYTs',  
-    "RYDtb" : 'gen_RYDtb',  
-    "RYSeDt" : 'gen_RYSeDt',   
-    "RYT"  : 'gen_RYT', 
-    "RYS"  : 'gen_RYS', 
-    "RYTM" : 'gen_RYTM',     
-    "RYC"  : 'gen_RYC',     
-    "RYE"  : 'gen_RYE',     
-    "RYTC" : 'gen_RYTC',  
-    "RYTCM": 'gen_RYTCM' , 
-    "RTSM": 'gen_RTSM' ,  
-    "RYTE" : 'gen_RYTE',  
-    "RYTEM": 'gen_RYTEM' , 
-    "RYTM" : 'gen_RYTM',     
-    "RYTTs": 'gen_RYTTs',     
-    "RYCTs": 'gen_RYCTs'
-}
 
 #full var list 38
 VARIABLES_C = {
@@ -218,7 +151,7 @@ PARAMETERS_C = {
         'DiscountRate': ['r'],
         'OutputActivityRatio':['r','f','t','y','m'],
         'InputActivityRatio':['r','f','t','y','m'],
-        'EmissionActivityRatio':['r','e''t','y','m'],
+        'EmissionActivityRatio':['r','e','t','y','m'],
         'TotalAnnualMaxCapacityInvestment':['r','t','y'],
         'TotalAnnualMinCapacityInvestment':['r','t','y'],
         'TotalTechnologyAnnualActivityUpperLimit':['r','t','y'],
@@ -258,4 +191,3 @@ PARAMETERS_C_full = {
         'SpecifiedDemandProfile': ['r','f','y','l','SpecifiedDemandProfile'],
         'ResidualStorageCapacity': ['r','s','y','ResidualStorageCapacity'],
     }
-
