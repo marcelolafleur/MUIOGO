@@ -142,7 +142,7 @@ export const PARAMCOLORS = {
     "RYCn": "pink",
     "RYTs": "red",
     "RYDtb": "blue",
-    "RYDtb": "red",
+    "RYSeDt": "red",
     "RYT": "greenLight",
     "RYTCn": "pink",
     "RYTM": "purple",
@@ -153,6 +153,7 @@ export const PARAMCOLORS = {
     "RYTE": "greenDark",
     "RYTEM": "orange",
     "RS": "red"    ,
+    "RYS": "red",
     "RTSM": "red",
     "RYTTs": "blue",
     "RYCTs": "greenLight"
