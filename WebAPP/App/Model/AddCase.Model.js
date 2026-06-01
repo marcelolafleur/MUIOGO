@@ -35,8 +35,10 @@ export class Model {
       this.commodities = genData['osy-comm'];
       this.emissions = genData['osy-emis'];
       this.constraints = genData['osy-constraints'];
-      this.indicators = genData['osy-indicators'];
-     
+      // MUIOGO: `|| []` guards pre-v5.6 cases that have no osy-indicators
+      // key. Without it, opening any older case throws a JS error.
+      this.indicators = genData['osy-indicators'] || [];
+
 
       this.techCount = genData['osy-tech'].length;
       this.stgCount = genData['osy-stg'].length;
@@ -49,7 +51,7 @@ export class Model {
       this.emisCount = genData['osy-emis'].length;
       this.scenariosCount = genData['osy-scenarios'].length;
       this.constraintsCount = genData['osy-constraints'].length;
-      this.indicatorsCount = genData['osy-indicators'].length;
+      this.indicatorsCount = (genData['osy-indicators'] || []).length;
     
       this.pageId = pageId;
     } else {
