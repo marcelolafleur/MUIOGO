@@ -2321,39 +2321,43 @@ class DataFile(Osemosys):
                 all_params = {}
 
                 for each in params:
-                    if each in Config.VARIABLES_C:
-                        result_cols = []
-
-                        # radi problem izmjena da dataframe bez copije 20240118 vk
-                        # df_p = df[df.parameter == each]
-                        # df_p[Config.VARIABLES_C[each]] = df_p['id'].str.split(',',expand=True)
-
+                    # Variable branch: pull setrelation from Variables.json via
+                    # VAR_BY_NAME. Replaces the legacy Config.VARIABLES_C lookup.
+                    # Anything the solver produces that is not in Variables.json
+                    # (storage internals, trade, discounting variants) is
+                    # intentionally not exported — those CSVs had no consumers
+                    # in MUIOGO and this matches MUIO 5.6's data-driven design.
+                    if each in self.VAR_BY_NAME:
                         df_p = df[df.parameter == each].copy()
-                        df_p[Config.VARIABLES_C[each]] = df_p['id'].str.split(',',expand=True)
+                        df_p[self.VAR_BY_NAME[each]["setrelation"]] = df_p['id'].str.split(',', expand=True)
 
-                        result_cols = Config.VARIABLES_C[each].copy()
+                        result_cols = self.VAR_BY_NAME[each]["setrelation"].copy()
+                        result_cols.append('value')
 
-                        # if each in ('EBb4_EnergyBalanceEachYear4_ICR', 'E8_AnnualEmissionsLimit', 'UDC1_UserDefinedConstraintInequality', 'UDC2_UserDefinedConstraintEquality'):
-                        if each in Config.DUALS.keys():
-                            result_cols.append('dual')
-                        else:
-                            result_cols.append('value')
-                        #result_cols.append(each)
-                        df_p = df_p[result_cols] # Reorder dataframe to include 'value' as last column
-                        all_params[each] = pd.DataFrame(df_p) # Create a dataframe for each parameter
+                        df_p = df_p[result_cols]
+                        all_params[each] = pd.DataFrame(df_p)
+                        all_params[each] = all_params[each].rename(columns={'value': each})
+                        all_params[each].to_csv(os.path.join(base_folder, 'csv', each + '.csv'), index=None)
 
-                        #napravi csv
-                        #if each in ('EBb4_EnergyBalanceEachYear4_ICR', 'E8_AnnualEmissionsLimit', 'UDC1_UserDefinedConstraintInequality', 'UDC2_UserDefinedConstraintEquality'):
-                        if each in Config.DUALS.keys():
-                            all_params[each] = all_params[each].rename(columns={'dual':each})
-                        else:
-                            all_params[each] = all_params[each].rename(columns={'value':each})
-                            all_params[each].to_csv(os.path.join(base_folder, 'csv', each+'.csv'), index=None)
+                    # Dual branch: pull setrelation from Duals.json via
+                    # DUALS_BY_NAME. CSV write is deferred to the discount loop
+                    # below so the dual values are scaled to the case discount
+                    # rate before being written.
+                    if each in self.DUALS_BY_NAME:
+                        df_p = df[df.parameter == each].copy()
+                        df_p[self.DUALS_BY_NAME[each]["setrelation"]] = df_p['id'].str.split(',', expand=True)
+
+                        result_cols = self.DUALS_BY_NAME[each]["setrelation"].copy()
+                        result_cols.append('dual')
+
+                        df_p = df_p[result_cols]
+                        all_params[each] = pd.DataFrame(df_p)
+                        all_params[each] = all_params[each].rename(columns={'dual': each})
 
                 ########################################Vars koje se izracunavaju u ovoj script nisu izlaz iz solvera###########
                 ################################################################################################################
                 #duals
-                for dual in Config.DUALS.keys():
+                for dual in self.DUALS_BY_NAME.keys():
                     # if 'EBb4_EnergyBalanceEachYear4_ICR' in all_params:
                     #     df_DR = pd.DataFrame(data['DiscountRate'], columns=Config.PARAMETERS_C_full['DiscountRate'])
                     #     df_DR['DiscountRate'] = df_DR['DiscountRate'].astype(float)
