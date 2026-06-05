@@ -10,11 +10,21 @@ class Helpers:
 
     @staticmethod
     def build_param(parameters: dict) -> dict[str, dict[str, str]]:
+        # Implements the intent of MUIOGO commit ebf060e8 (handle a None value
+        # safely instead of letting upstream's `str(None)` produce the literal
+        # "None") without the side effects MUIOGO's prior inline `(value or
+        # '')` form had: silently coercing 0/False to '' and crashing on True.
+        # For real data (strings / None from JSON) this is equivalent to the
+        # MUIOGO inline form; for edge cases it stays closer to upstream MUIO's
+        # behavior for non-None values. Missing 'value' key still raises
+        # KeyError to match both MUIOGO inline and MUIO upstream — data
+        # corruption should surface, not be silently masked.
         d = {}
         for k, lst in parameters.items():
             tmp = {}
             for de in lst:
-                tmp[de['id']] = str(de['value']).replace(" ", "")
+                value = de['value']
+                tmp[de['id']] = ('' if value is None else str(value)).replace(' ', '')
             d[k] = tmp
         return d
 
