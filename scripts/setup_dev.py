@@ -18,7 +18,7 @@ Usage:
 
 Supports: macOS, Linux (apt/dnf/pacman), Windows
 
-Python support: >=3.10 and <3.13 (recommended: 3.11)
+Python support: >=3.11 and <3.13 (recommended: 3.11)
 
 Default venv location: ~/.venvs/muiogo (outside repo)
 """
@@ -48,7 +48,7 @@ VENV_DIR = (Path.home() / ".venvs" / "muiogo").resolve()
 REQUIREMENTS = PROJECT_ROOT / "requirements.txt"
 ENV_FILE = PROJECT_ROOT / ".env"
 SYSTEM = platform.system()  # 'Darwin', 'Linux', 'Windows'
-MIN_PYTHON = (3, 10)
+MIN_PYTHON = (3, 11)
 MAX_PYTHON = (3, 13)  # exclusive
 DATA_STORAGE_DIR = PROJECT_ROOT / "WebAPP" / "DataStorage"
 DEMO_DATA_ARCHIVE = PROJECT_ROOT / "assets" / "demo-data" / "CLEWs.Demo.zip"
@@ -1264,10 +1264,15 @@ def main() -> int:
         action="store_true",
         help="Skip interactive confirmation prompts (required for non-interactive force reinstall).",
     )
+    parser.add_argument(
+    "--platform-only",
+    action="store_true",
+    help="Skip Python venv/dependency setup and run only platform setup steps after uv sync.",
+    )
     parser.set_defaults(with_demo_data=True)
     args = parser.parse_args()
 
-    conda_env = os.environ.get("CONDA_DEFAULT_ENV", "").strip()
+    conda_env = os.environ.get("CONDA_DEFAULT_ENV", "").strip() 
     if conda_env:
         print(
             f"{RED}{BOLD}Conda environment is active: {conda_env}{RESET}\n"
@@ -1315,7 +1320,7 @@ def main() -> int:
     print(f"  Project  : {PROJECT_ROOT}")
     print(f"  Venv dir : {VENV_DIR}")
 
-    if PROJECT_ROOT.resolve() in VENV_DIR.resolve().parents:
+    if not args.platform_only and PROJECT_ROOT.resolve() in VENV_DIR.resolve().parents:
         _print_warn(
             "Using in-repo virtual environment",
             "This can cause high CPU in Codex Desktop. External venv is recommended.",
@@ -1336,14 +1341,22 @@ def main() -> int:
 
     results: dict[str, tuple[bool, str]] = {}
 
-    step1_ok = setup_venv()
-    results["Python virtual environment"] = (step1_ok, str(VENV_DIR))
+    if not args.platform_only:
+        step1_ok = setup_venv()
+        results["Python virtual environment"] = (step1_ok, str(VENV_DIR))
 
-    if step1_ok:
-        results["Python dependencies"] = (install_python_deps(), "")
+        if step1_ok:
+            results["Python dependencies"] = (install_python_deps(), "")
+        else:
+            results["Python dependencies"] = (False, "skipped because venv setup failed")
+            _print_fail("Skipping Python deps (venv setup failed)")
     else:
-        results["Python dependencies"] = (False, "skipped because venv setup failed")
-        _print_fail("Skipping Python deps (venv setup failed)")
+        _print_header("Step 1 & 2: Skipped (uv-managed environment)")
+        _print_pass(
+            "Python environment managed by uv",
+            "skipping venv creation and pip install",
+        )
+    results["Python environment"] = (True, "managed by uv sync")
 
     results["App secret key"] = (_ensure_secret_key_in_env(), str(ENV_FILE))
 
