@@ -25,6 +25,10 @@ __pycache__/
 .coverage.*
 htmlcov/
 
+# Installer log files
+.install-*.log
+scripts/.install-*.log
+
 # OS artifacts
 .DS_Store
 Thumbs.db
