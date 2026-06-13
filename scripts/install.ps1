@@ -61,7 +61,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $ScriptDir = (Get-Location).Path
 
-if ($RepoUrl -eq "") { $RepoUrl = "https://github.com/EAPD-DRB/MUIOGO.git" }
+if ($RepoUrl -eq "") { $RepoUrl = "https://github.com/utsinboots/MUIOGO.git" }
 $RepoName = "MUIOGO"
 
 # -- Colors --------------------------------------------------------------------

@@ -30,7 +30,7 @@
 set -euo pipefail
 
 # -- Defaults ------------------------------------------------------------------
-REPO_URL="https://github.com/EAPD-DRB/MUIOGO.git"
+REPO_URL="https://github.com/utsinboots/MUIOGO.git"
 REPO_NAME="MUIOGO"
 DEST=""
 BRANCH=""
