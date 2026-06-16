@@ -22,7 +22,7 @@
 #   --no-log            Don't write a log file
 #
 # One-liner:
-#   curl -fsSL https://raw.githubusercontent.com/EAPD-DRB/MUIOGO/main/scripts/install.sh | bash
+#   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/EAPD-DRB/MUIOGO/main/scripts/install.sh)"
 #
 # Test a fork:
 #   bash install.sh --repo-url https://github.com/YOUR_FORK/MUIOGO.git --branch feature/472-uv-installer
@@ -148,6 +148,11 @@ if [[ -n "${VIRTUAL_ENV:-}" ]]; then
     exit 1
 fi
 
+if ! command -v curl &>/dev/null; then
+    echo -e "${RED}ERROR:${RESET} 'curl' is required to install uv. Please install curl and re-run."
+    exit 1
+fi
+
 # -- Detect existing uv --------------------------------------------------------
 UV_BIN=""
 detect_uv() {
@@ -240,7 +245,19 @@ START_TIME="$(date +%s)"
 
 # -- Step 1: Check git ---------------------------------------------------------
 step_banner 1 "Check git"
-if ! command -v git &>/dev/null; then
+# macOS ships a /usr/bin/git stub that exists even when the Command Line Tools
+# (which provide the real git) are not installed. `command -v git` would then
+# report git as present, and the clone would later trigger a GUI prompt or fail.
+# On macOS we confirm with `xcode-select -p`, which is the reliable check.
+git_ok=0
+if [[ "$(uname)" == "Darwin" ]]; then
+    if xcode-select -p &>/dev/null && command -v git &>/dev/null; then
+        git_ok=1
+    fi
+elif command -v git &>/dev/null; then
+    git_ok=1
+fi
+if [[ $git_ok -eq 0 ]]; then
     fail "git is not installed or not on PATH"
     echo ""
     echo "  Install git, then re-run this installer:"
@@ -369,16 +386,19 @@ SETUP_ARGS=("scripts/setup_dev.py" "--platform-only" "--venv-dir" ".venv")
 
 cmd "python ${SETUP_ARGS[*]}"
 pushd "$DEST_ABS" >/dev/null
-"$VENV_PYTHON" "${SETUP_ARGS[@]}"
-SETUP_EXIT=$?
+# Capture the exit code instead of letting `set -e` abort here, so a failure is
+# reported in the summary below (matching install.ps1) rather than aborting
+# before the summary prints.
+SETUP_EXIT=0
+"$VENV_PYTHON" "${SETUP_ARGS[@]}" || SETUP_EXIT=$?
 popd >/dev/null
 
 if [[ $SETUP_EXIT -ne 0 ]]; then
     fail "Platform setup reported failures -- review output above"
     record_step "Platform setup" "FAIL" "setup_dev.py exited ${SETUP_EXIT}"
-    exit 1
+else
+    record_step "Platform setup" "PASS" "solvers, demo data, secret key, verification"
 fi
-record_step "Platform setup" "PASS" "solvers, demo data, secret key, verification"
 
 # -- Summary -------------------------------------------------------------------
 END_TIME="$(date +%s)"

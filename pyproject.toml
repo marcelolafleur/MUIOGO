@@ -1,13 +1,9 @@
-[build-system]
-requires = ["setuptools>=64", "wheel"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "muiogo"
 version = "0.1.0"
 description = "MUIOGO, integration project to bring the purely Python-based OG-Core model into MUIO, the GUI for OSeMOSYS (CLEWS)"
 readme = "README.md"
-requires-python = ">=3.11, <3.13"
+requires-python = ">=3.10, <3.13"
 dependencies = [
     "blinker==1.8.2",
     "boto3==1.34.122",
@@ -38,14 +34,17 @@ dependencies = [
 Homepage = "https://github.com/EAPD-DRB/MUIOGO"
 "Issue Tracker" = "https://github.com/EAPD-DRB/MUIOGO/issues"
 
-[tool.setuptools.packages.find]
-include = ["API*"]
+[tool.uv]
+# MUIOGO is an application we run (python API/app.py), not a library that other
+# code imports — so uv installs only the dependencies; it does not build or
+# install MUIOGO itself as a package.
+package = false
 
 #----------------------------------------------------------------------------
 # ruff
 # ---------------------------------------------------------------------------
 [tool.ruff]
-target-version = "py311"
+target-version = "py310"
 line-length = 120
 include = ["API/**/*.py", "tests/**/*.py"]
 

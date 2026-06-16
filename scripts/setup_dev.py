@@ -18,7 +18,7 @@ Usage:
 
 Supports: macOS, Linux (apt/dnf/pacman), Windows
 
-Python support: >=3.11 and <3.13 (recommended: 3.11)
+Python support: >=3.10 and <3.13 (recommended: 3.11)
 
 Default venv location: ~/.venvs/muiogo (outside repo)
 """
@@ -48,7 +48,7 @@ VENV_DIR = (Path.home() / ".venvs" / "muiogo").resolve()
 REQUIREMENTS = PROJECT_ROOT / "requirements.txt"
 ENV_FILE = PROJECT_ROOT / ".env"
 SYSTEM = platform.system()  # 'Darwin', 'Linux', 'Windows'
-MIN_PYTHON = (3, 11)
+MIN_PYTHON = (3, 10)
 MAX_PYTHON = (3, 13)  # exclusive
 DATA_STORAGE_DIR = PROJECT_ROOT / "WebAPP" / "DataStorage"
 DEMO_DATA_ARCHIVE = PROJECT_ROOT / "assets" / "demo-data" / "CLEWs.Demo.zip"
@@ -1282,7 +1282,7 @@ def main() -> int:
     parser.set_defaults(with_demo_data=True)
     args = parser.parse_args()
 
-    conda_env = os.environ.get("CONDA_DEFAULT_ENV", "").strip() 
+    conda_env = os.environ.get("CONDA_DEFAULT_ENV", "").strip()
     if conda_env:
         print(
             f"{RED}{BOLD}Conda environment is active: {conda_env}{RESET}\n"
@@ -1366,7 +1366,7 @@ def main() -> int:
             "Python environment managed by uv",
             "skipping venv creation and pip install",
         )
-    results["Python environment"] = (True, "managed by uv sync")
+        results["Python environment"] = (True, "managed by uv sync")
 
     results["App secret key"] = (_ensure_secret_key_in_env(), str(ENV_FILE))
 

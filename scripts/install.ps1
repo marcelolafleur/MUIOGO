@@ -406,11 +406,13 @@ Push-Location $DestAbs
 try {
     & $VenvPython @SetupArgs
     if ($LASTEXITCODE -ne 0) {
+        # Don't exit here: record the failure and fall through to the summary
+        # (matches install.sh) so the full result table prints before exiting.
         Write-Fail "Platform setup reported failures -- review output above"
         Record-Step "Platform setup" "FAIL" "setup_dev.py exited $LASTEXITCODE"
-        Stop-TranscriptIfActive; exit 1
+    } else {
+        Record-Step "Platform setup" "PASS" "solvers, demo data, secret key, verification"
     }
-    Record-Step "Platform setup" "PASS" "solvers, demo data, secret key, verification"
 } finally {
     Pop-Location
 }
