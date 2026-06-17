@@ -40,7 +40,7 @@ SKIP_UV_INSTALL=0
 NO_LOG=1
 
 SCRIPT_DIR="$(pwd)"
-TOTAL_STEPS=6
+TOTAL_STEPS=5
 
 # -- Argument parsing ----------------------------------------------------------
 while [[ $# -gt 0 ]]; do
@@ -232,9 +232,8 @@ else
     echo -e "    2. Install uv                      ${DIM}~5MB, seconds${RESET}"
 fi
 echo -e "    3. Clone MUIOGO                    ${DIM}depends on network${RESET}"
-echo -e "    4. Check for updates (MUIOGO)"
-echo -e "    5. uv sync (Python + deps)         ${DIM}~30s${RESET}"
-echo    "    6. Platform setup (solvers, demo data, secret key, verification)"
+echo -e "    4. uv sync (Python + deps)         ${DIM}~30s${RESET}"
+echo    "    5. Platform setup (solvers, demo data, secret key, verification)"
 echo ""
 
 if ! prompt_yn "Proceed with installation?" y; then
@@ -333,18 +332,39 @@ fi
 if [[ $DEST_HAS_REPO -eq 1 ]]; then
     CURRENT_BRANCH="$("$GIT_BIN" -C "$DEST_ABS" rev-parse --abbrev-ref HEAD 2>/dev/null || echo '?')"
     echo "  Existing MUIOGO clone found at ${DEST_ABS} (branch: ${CURRENT_BRANCH})."
-    if prompt_yn "Update with git pull --ff-only?" y; then
-        cmd "git -C ${DEST_ABS} pull --ff-only"
-        if "$GIT_BIN" -C "$DEST_ABS" pull --ff-only; then
-            pass "Repo updated" "$DEST_ABS"
-            record_step "Clone" "PASS" "updated (${CURRENT_BRANCH})"
-        else
-            warn "git pull failed; continuing with existing state"
-            record_step "Clone" "WARN" "pull failed; existing state used"
-        fi
+
+    # -- Version check against EAPD-DRB/MUIOGO:main ---------------------------
+    LOCAL_SHA="$("$GIT_BIN" -C "$DEST_ABS" rev-parse --short HEAD 2>/dev/null || echo '?')"
+    "$GIT_BIN" -C "$DEST_ABS" fetch https://github.com/EAPD-DRB/MUIOGO.git main --quiet 2>/dev/null || true
+    REMOTE_SHA="$("$GIT_BIN" -C "$DEST_ABS" rev-parse --short FETCH_HEAD 2>/dev/null || echo '?')"
+    BEHIND="$("$GIT_BIN" -C "$DEST_ABS" rev-list --count HEAD..FETCH_HEAD 2>/dev/null || echo '?')"
+    AHEAD="$("$GIT_BIN" -C "$DEST_ABS" rev-list --count FETCH_HEAD..HEAD 2>/dev/null || echo '?')"
+
+    echo "  Local:   ${LOCAL_SHA}  (${CURRENT_BRANCH})"
+    echo "  Latest:  ${REMOTE_SHA}  (EAPD-DRB/MUIOGO:main)"
+    echo ""
+
+    if [[ "$BEHIND" == "?" ]]; then
+        warn "Could not check for updates — continuing with current version"
+        record_step "Clone" "WARN" "could not reach remote"
+    elif [[ "$BEHIND" == "0" ]]; then
+        pass "Up to date  --  0 behind, ${AHEAD} ahead"
+        record_step "Clone" "PASS" "up to date (${CURRENT_BRANCH})"
     else
-        skip "Update" "using existing clone as-is"
-        record_step "Clone" "SKIP" "existing clone used as-is"
+        warn "${BEHIND} behind, ${AHEAD} ahead  --  update now?"
+        if prompt_yn "Update now?" y; then
+            cmd "git -C ${DEST_ABS} pull --ff-only"
+            if "$GIT_BIN" -C "$DEST_ABS" pull --ff-only; then
+                pass "Updated to $("$GIT_BIN" -C "$DEST_ABS" rev-parse --short HEAD)"
+                record_step "Clone" "PASS" "updated (was ${BEHIND} behind)"
+            else
+                warn "git pull failed; continuing with existing state"
+                record_step "Clone" "WARN" "pull failed; existing state used"
+            fi
+        else
+            skip "Update skipped" "continuing with ${LOCAL_SHA}"
+            record_step "Clone" "SKIP" "user declined update"
+        fi
     fi
 else
     CLONE_ARGS=("clone")
@@ -360,37 +380,8 @@ else
     record_step "Clone" "PASS" "$CURRENT_BRANCH"
 fi
 
-# -- Step 4: Check for updates -------------------------------------------------
-step_banner 4 "Check for updates (MUIOGO)"
-LOCAL_SHA="$("$GIT_BIN" -C "$DEST_ABS" rev-parse --short HEAD 2>/dev/null || echo '?')"
-"$GIT_BIN" -C "$DEST_ABS" fetch origin --quiet 2>/dev/null || true
-REMOTE_SHA="$("$GIT_BIN" -C "$DEST_ABS" rev-parse --short origin/main 2>/dev/null || echo '?')"
-BEHIND="$("$GIT_BIN" -C "$DEST_ABS" rev-list --count HEAD..origin/main 2>/dev/null || echo '?')"
-
-echo "  Local:   ${LOCAL_SHA}"
-echo "  Latest:  ${REMOTE_SHA}  (EAPD-DRB/MUIOGO)"
-echo ""
-
-if [[ "$BEHIND" == "0" ]]; then
-    pass "Already up to date"
-    record_step "Check for updates" "PASS" "up to date"
-elif [[ "$BEHIND" == "?" ]]; then
-    warn "Could not check for updates — continuing with current version"
-    record_step "Check for updates" "WARN" "could not reach remote"
-else
-    warn "This branch is ${BEHIND} commit(s) behind EAPD-DRB/MUIOGO:main"
-    if prompt_yn "Update now?" y; then
-        "$GIT_BIN" -C "$DEST_ABS" pull --ff-only
-        pass "Updated to $("$GIT_BIN" -C "$DEST_ABS" rev-parse --short HEAD)"
-        record_step "Check for updates" "PASS" "updated (was ${BEHIND} behind)"
-    else
-        skip "Update skipped" "continuing with ${LOCAL_SHA}"
-        record_step "Check for updates" "SKIP" "user declined update"
-    fi
-fi
-
-# -- Step 5: uv sync -----------------------------------------------------------
-step_banner 5 "Install dependencies (uv sync)"
+# -- Step 4: uv sync -----------------------------------------------------------
+step_banner 4 "Install dependencies (uv sync)"
 echo "  Installing Python + all dependencies into ${DEST_ABS}/.venv"
 cmd "uv sync"
 pushd "$DEST_ABS" >/dev/null
@@ -399,8 +390,8 @@ popd >/dev/null
 pass "Dependencies installed" ".venv"
 record_step "uv sync" "PASS" ".venv"
 
-# -- Step 6: Platform setup ----------------------------------------------------
-step_banner 6 "Platform setup (solvers, demo data, secret key, verification)"
+# -- Step 5: Platform setup ----------------------------------------------------
+step_banner 5 "Platform setup (solvers, demo data, secret key, verification)"
 if [[ -x "${DEST_ABS}/.venv/bin/python" ]]; then
     VENV_PYTHON="${DEST_ABS}/.venv/bin/python"
 elif [[ -x "${DEST_ABS}/.venv/Scripts/python.exe" ]]; then

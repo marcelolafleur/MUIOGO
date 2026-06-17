@@ -111,7 +111,7 @@ function Write-Skip($label, $detail = "") {
 }
 function Write-Cmd($cmd) { Write-Host "  $DIM`$ $cmd$RESET" }
 
-$TotalSteps = 6
+$TotalSteps = 5
 function Step-Banner($n, $title) {
     Write-Host ""
     Write-Hr
@@ -234,9 +234,8 @@ if ($UvPresent -or $SkipUvInstall) {
     Write-Host "    2. Install uv                      ${DIM}~5MB, seconds${RESET}"
 }
 Write-Host ("    3. Clone MUIOGO                    ${DIM}depends on network${RESET}")
-Write-Host "    4. Check for updates (MUIOGO)"
-Write-Host "    5. uv sync (Python + deps)         ${DIM}~30s${RESET}"
-Write-Host "    6. Platform setup (solvers, demo data, secret key, verification)"
+Write-Host "    4. uv sync (Python + deps)         ${DIM}~30s${RESET}"
+Write-Host "    5. Platform setup (solvers, demo data, secret key, verification)"
 Write-Host ""
 
 if (-not (Prompt-YN "Proceed with installation?" 'y')) {
@@ -335,19 +334,45 @@ if ($DestHasRepo) {
     $branch = "?"
     try { $branch = (& $GitBin -C $DestAbs rev-parse --abbrev-ref HEAD 2>$null).Trim() } catch {}
     Write-Host ("  Existing MUIOGO clone found at {0} (branch: {1})." -f $DestAbs, $branch)
-    if (Prompt-YN "Update with git pull --ff-only?" 'y') {
-        Write-Cmd "git -C $DestAbs pull --ff-only"
-        & $GitBin -C $DestAbs pull --ff-only
-        if ($LASTEXITCODE -eq 0) {
-            Write-Pass "Repo updated" $DestAbs
-            Record-Step "Clone" "PASS" "updated ($branch)"
-        } else {
-            Write-Warn2 "git pull failed; continuing with existing state"
-            Record-Step "Clone" "WARN" "pull failed; existing state used"
-        }
+
+    # -- Version check against EAPD-DRB/MUIOGO:main ---------------------------
+    $localSha  = ""
+    $remoteSha = ""
+    $behind    = "?"
+    $ahead     = "?"
+    try { $localSha = (& $GitBin -C $DestAbs rev-parse --short HEAD 2>$null).Trim() } catch {}
+    try { & $GitBin -C $DestAbs fetch https://github.com/EAPD-DRB/MUIOGO.git main --quiet 2>$null } catch {}
+    try { $remoteSha = (& $GitBin -C $DestAbs rev-parse --short FETCH_HEAD 2>$null).Trim() } catch {}
+    try { $behind    = (& $GitBin -C $DestAbs rev-list --count "HEAD..FETCH_HEAD" 2>$null).Trim() } catch {}
+    try { $ahead     = (& $GitBin -C $DestAbs rev-list --count "FETCH_HEAD..HEAD" 2>$null).Trim() } catch {}
+
+    Write-Host ("  Local:   {0}  ({1})" -f $localSha, $branch)
+    Write-Host ("  Latest:  {0}  (EAPD-DRB/MUIOGO:main)" -f $remoteSha)
+    Write-Host ""
+
+    if ($behind -eq "?") {
+        Write-Warn2 "Could not check for updates - continuing with current version"
+        Record-Step "Clone" "WARN" "could not reach remote"
+    } elseif ($behind -eq "0") {
+        Write-Pass "Up to date  --  0 behind, $ahead ahead"
+        Record-Step "Clone" "PASS" "up to date ($branch)"
     } else {
-        Write-Skip "Update" "using existing clone as-is"
-        Record-Step "Clone" "SKIP" "existing clone used as-is"
+        Write-Warn2 "$behind behind, $ahead ahead  --  update now?"
+        if (Prompt-YN "Update now?" 'y') {
+            & $GitBin -C $DestAbs pull --ff-only
+            if ($LASTEXITCODE -eq 0) {
+                $newSha = ""
+                try { $newSha = (& $GitBin -C $DestAbs rev-parse --short HEAD 2>$null).Trim() } catch {}
+                Write-Pass "Updated to $newSha"
+                Record-Step "Clone" "PASS" "updated (was $behind behind)"
+            } else {
+                Write-Warn2 "git pull failed; continuing with existing state"
+                Record-Step "Clone" "WARN" "pull failed; existing state used"
+            }
+        } else {
+            Write-Skip "Update skipped" "continuing with $localSha"
+            Record-Step "Clone" "SKIP" "user declined update"
+        }
     }
 } else {
     $cloneArgs = @("clone")
@@ -371,42 +396,8 @@ if ($DestHasRepo) {
     Record-Step "Clone" "PASS" $branch
 }
 
-# -- Step 4: Check for updates -------------------------------------------------
-Step-Banner 4 "Check for updates (MUIOGO)"
-$localSha  = ""
-$remoteSha = ""
-$behind    = "?"
-try { $localSha  = (& $GitBin -C $DestAbs rev-parse --short HEAD 2>$null).Trim() } catch {}
-try { & $GitBin -C $DestAbs fetch origin --quiet 2>$null } catch {}
-try { $remoteSha = (& $GitBin -C $DestAbs rev-parse --short origin/main 2>$null).Trim() } catch {}
-try { $behind    = (& $GitBin -C $DestAbs rev-list --count "HEAD..origin/main" 2>$null).Trim() } catch {}
-
-Write-Host ("  Local:   {0}" -f $localSha)
-Write-Host ("  Latest:  {0}  (EAPD-DRB/MUIOGO)" -f $remoteSha)
-Write-Host ""
-
-if ($behind -eq "0") {
-    Write-Pass "Already up to date"
-    Record-Step "Check for updates" "PASS" "up to date"
-} elseif ($behind -eq "?") {
-    Write-Warn2 "Could not check for updates — continuing with current version"
-    Record-Step "Check for updates" "WARN" "could not reach remote"
-} else {
-    Write-Warn2 "This branch is $behind commit(s) behind EAPD-DRB/MUIOGO:main"
-    if (Prompt-YN "Update now?" 'y') {
-        & $GitBin -C $DestAbs pull --ff-only
-        $newSha = ""
-        try { $newSha = (& $GitBin -C $DestAbs rev-parse --short HEAD 2>$null).Trim() } catch {}
-        Write-Pass "Updated to $newSha"
-        Record-Step "Check for updates" "PASS" "updated (was $behind behind)"
-    } else {
-        Write-Skip "Update skipped" "continuing with $localSha"
-        Record-Step "Check for updates" "SKIP" "user declined update"
-    }
-}
-
-# -- Step 5: uv sync -----------------------------------------------------------
-Step-Banner 5 "Install dependencies (uv sync)"
+# -- Step 4: uv sync -----------------------------------------------------------
+Step-Banner 4 "Install dependencies (uv sync)"
 Write-Host ("  Installing Python + all dependencies into {0}\.venv" -f $DestAbs)
 Write-Cmd "uv sync"
 Push-Location $DestAbs
@@ -423,8 +414,8 @@ try {
     Pop-Location
 }
 
-# -- Step 6: Platform setup ----------------------------------------------------
-Step-Banner 6 "Platform setup (solvers, demo data, secret key, verification)"
+# -- Step 5: Platform setup ----------------------------------------------------
+Step-Banner 5 "Platform setup (solvers, demo data, secret key, verification)"
 $VenvPython = Join-Path $DestAbs ".venv\Scripts\python.exe"
 if (-not (Test-Path $VenvPython)) {
     Write-Fail "venv Python not found" $VenvPython
