@@ -58,7 +58,7 @@ These work with either method above:
 - `--yes` / `-Yes` — accept all prompts (non-interactive).
 - `--no-demo-data` / `-NoDemoData` — skip the demo-data download.
 - `--skip-uv-install` / `-SkipUvInstall` — assume `uv` is already installed.
-- `--no-log` / `-NoLog` — don't write an install log file.
+- `--log` / `-Log` — write an install log file.
 
 ```bash
 # macOS / Linux — install into ~/Projects/MUIOGO, no prompts

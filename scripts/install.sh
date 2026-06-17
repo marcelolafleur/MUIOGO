@@ -19,7 +19,7 @@
 #   --yes               Auto-confirm every prompt (non-interactive)
 #   --no-demo-data      Skip demo data installation
 #   --skip-uv-install   Skip uv installation; assume uv is already on PATH
-#   --no-log            Don't write a log file
+#   --log               Write an install log file
 #
 # One-liner:
 #   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/EAPD-DRB/MUIOGO/main/scripts/install.sh)"
@@ -37,10 +37,10 @@ BRANCH=""
 YES=0
 NO_DEMO_DATA=0
 SKIP_UV_INSTALL=0
-NO_LOG=0
+NO_LOG=1
 
 SCRIPT_DIR="$(pwd)"
-TOTAL_STEPS=5
+TOTAL_STEPS=6
 
 # -- Argument parsing ----------------------------------------------------------
 while [[ $# -gt 0 ]]; do
@@ -51,7 +51,7 @@ while [[ $# -gt 0 ]]; do
         --yes|-y)        YES=1;             shift   ;;
         --no-demo-data)  NO_DEMO_DATA=1;    shift   ;;
         --skip-uv-install) SKIP_UV_INSTALL=1; shift ;;
-        --no-log)        NO_LOG=1;          shift   ;;
+        --log)           NO_LOG=0;          shift   ;;
         -h|--help)
             sed -n '/^# Usage/,/^[^#]/p' "$0" | sed 's/^# \?//'
             exit 0
@@ -232,8 +232,9 @@ else
     echo -e "    2. Install uv                      ${DIM}~5MB, seconds${RESET}"
 fi
 echo -e "    3. Clone MUIOGO                    ${DIM}depends on network${RESET}"
-echo -e "    4. uv sync (Python + deps)         ${DIM}~30s${RESET}"
-echo    "    5. Platform setup (solvers, demo data, secret key, verification)"
+echo -e "    4. Check for updates (MUIOGO)"
+echo -e "    5. uv sync (Python + deps)         ${DIM}~30s${RESET}"
+echo    "    6. Platform setup (solvers, demo data, secret key, verification)"
 echo ""
 
 if ! prompt_yn "Proceed with installation?" y; then
@@ -359,8 +360,37 @@ else
     record_step "Clone" "PASS" "$CURRENT_BRANCH"
 fi
 
-# -- Step 4: uv sync -----------------------------------------------------------
-step_banner 4 "Install dependencies (uv sync)"
+# -- Step 4: Check for updates -------------------------------------------------
+step_banner 4 "Check for updates (MUIOGO)"
+LOCAL_SHA="$("$GIT_BIN" -C "$DEST_ABS" rev-parse --short HEAD 2>/dev/null || echo '?')"
+"$GIT_BIN" -C "$DEST_ABS" fetch origin --quiet 2>/dev/null || true
+REMOTE_SHA="$("$GIT_BIN" -C "$DEST_ABS" rev-parse --short origin/main 2>/dev/null || echo '?')"
+BEHIND="$("$GIT_BIN" -C "$DEST_ABS" rev-list --count HEAD..origin/main 2>/dev/null || echo '?')"
+
+echo "  Local:   ${LOCAL_SHA}"
+echo "  Latest:  ${REMOTE_SHA}  (EAPD-DRB/MUIOGO)"
+echo ""
+
+if [[ "$BEHIND" == "0" ]]; then
+    pass "Already up to date"
+    record_step "Check for updates" "PASS" "up to date"
+elif [[ "$BEHIND" == "?" ]]; then
+    warn "Could not check for updates — continuing with current version"
+    record_step "Check for updates" "WARN" "could not reach remote"
+else
+    warn "This branch is ${BEHIND} commit(s) behind EAPD-DRB/MUIOGO:main"
+    if prompt_yn "Update now?" y; then
+        "$GIT_BIN" -C "$DEST_ABS" pull --ff-only
+        pass "Updated to $("$GIT_BIN" -C "$DEST_ABS" rev-parse --short HEAD)"
+        record_step "Check for updates" "PASS" "updated (was ${BEHIND} behind)"
+    else
+        skip "Update skipped" "continuing with ${LOCAL_SHA}"
+        record_step "Check for updates" "SKIP" "user declined update"
+    fi
+fi
+
+# -- Step 5: uv sync -----------------------------------------------------------
+step_banner 5 "Install dependencies (uv sync)"
 echo "  Installing Python + all dependencies into ${DEST_ABS}/.venv"
 cmd "uv sync"
 pushd "$DEST_ABS" >/dev/null
@@ -369,8 +399,8 @@ popd >/dev/null
 pass "Dependencies installed" ".venv"
 record_step "uv sync" "PASS" ".venv"
 
-# -- Step 5: Platform setup ----------------------------------------------------
-step_banner 5 "Platform setup (solvers, demo data, secret key, verification)"
+# -- Step 6: Platform setup ----------------------------------------------------
+step_banner 6 "Platform setup (solvers, demo data, secret key, verification)"
 if [[ -x "${DEST_ABS}/.venv/bin/python" ]]; then
     VENV_PYTHON="${DEST_ABS}/.venv/bin/python"
 elif [[ -x "${DEST_ABS}/.venv/Scripts/python.exe" ]]; then
