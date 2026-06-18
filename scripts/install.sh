@@ -115,8 +115,7 @@ is_interactive() { [[ $STDIN_IS_TTY -eq 1 ]]; }
 
 prompt_yn() {
     local prompt="$1" default="${2:-y}"
-    local opts="[Y/n/q]"
-    [[ "$default" != "y" ]] && opts="[y/N/q]"
+    local opts="[Y/N]"
 
     if [[ $YES -eq 1 ]]; then
         echo -e "$prompt $opts ${DIM}(auto: yes)${RESET}"
@@ -132,8 +131,7 @@ prompt_yn() {
         case "$(echo "$ans" | tr '[:upper:]' '[:lower:]')" in
             y|yes)      return 0 ;;
             n|no)       return 1 ;;
-            q|quit)     echo -e "${YELLOW}Aborted by user.${RESET}"; exit 130 ;;
-            *)          echo "  Please answer y, n, or q." ;;
+            *)          echo "  Please answer Y or N." ;;
         esac
     done
 }
@@ -453,11 +451,6 @@ echo ""
 if [[ $ALL_OK -eq 1 ]]; then
     echo -e "  ${GREEN}${BOLD}MUIOGO is installed and ready.${RESET}"
     echo ""
-    echo -e "  ${BOLD}To start MUIOGO:${RESET}"
-    echo    "    cd ${DEST_ABS}"
-    echo    "    uv run python API/app.py"
-    echo ""
-
     if prompt_yn "Start MUIOGO now?" y; then
         PORT="${PORT:-5002}"
         URL="http://127.0.0.1:${PORT}/"

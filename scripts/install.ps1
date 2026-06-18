@@ -125,7 +125,7 @@ function Test-Interactive {
 }
 
 function Prompt-YN($prompt, $default = 'y') {
-    $opts = if ($default -eq 'y') { '[Y/n/q]' } else { '[y/N/q]' }
+    $opts = '[Y/N]'
     if ($Yes) {
         Write-Host "$prompt $opts ${DIM}(auto: yes)${RESET}"
         return $true
@@ -140,12 +140,7 @@ function Prompt-YN($prompt, $default = 'y') {
         switch -Regex ($ans) {
             '^(y|yes)$'  { return $true }
             '^(n|no)$'   { return $false }
-            '^(q|quit)$' {
-                Write-Host "${YELLOW}Aborted by user.${RESET}"
-                Stop-TranscriptIfActive
-                exit 130
-            }
-            default { Write-Host "  Please answer y, n, or q." }
+            default { Write-Host "  Please answer Y or N." }
         }
     }
 }
@@ -472,15 +467,6 @@ Write-Host ""
 if ($AllOk) {
     Write-Host "  ${GREEN}${BOLD}MUIOGO is installed and ready.${RESET}"
     Write-Host ""
-    Write-Host "  ${BOLD}To start MUIOGO:${RESET}"
-    Write-Host ("    cd {0}" -f $DestAbs)
-    Write-Host ("    uv run python API\app.py")
-    Write-Host ""
-    Write-Host "  Or activate the venv first:"
-    Write-Host "    .\.venv\Scripts\Activate.ps1"
-    Write-Host "    python API\app.py"
-    Write-Host ""
-
     if (Prompt-YN "Start MUIOGO now?" 'y') {
         $Port = if ($env:PORT) { $env:PORT } else { "5002" }
         $Url  = "http://127.0.0.1:${Port}/"

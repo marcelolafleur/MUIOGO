@@ -1273,27 +1273,12 @@ def _print_summary(results: dict[str, tuple[bool, str]]) -> None:
     print()
 
     if all_ok and not has_warning:
-        start_cmd = r'scripts\start.bat' if SYSTEM == "Windows" else "./scripts/start.sh"
-        run_cmd = f'"{_venv_python()}" "{PROJECT_ROOT / "API" / "app.py"}"'
         print(textwrap.dedent(f"""\
         {GREEN}{BOLD}All checks passed! Your MUIOGO environment is ready.{RESET}
-
-        Next steps:
-          1. Start the app (opens browser automatically):
-               {start_cmd}
-          2. Stop the app with CTRL+C in the terminal.
-          3. Advanced/manual start (without launcher):
-               {run_cmd}
         """))
     elif all_ok:
-        start_cmd = r'scripts\start.bat' if SYSTEM == "Windows" else "./scripts/start.sh"
         print(textwrap.dedent(f"""\
         {GREEN}{BOLD}MUIOGO is set up.{RESET} {YELLOW}Some optional components are missing (see warnings above).{RESET}
-
-        You can start the app now:
-               {start_cmd}
-        The GLPK/CBC solvers are only needed to run a model — install them (see the
-        notes above), then re-run with --check when you're ready.
         """))
     else:
         check_cmd = r'scripts\setup.bat --check' if SYSTEM == "Windows" else "./scripts/setup.sh --check"
