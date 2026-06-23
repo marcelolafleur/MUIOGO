@@ -965,14 +965,17 @@ def install_solvers(yes: bool = False) -> bool:
             if not glpk_ok:
                 r = _run([brew, "install", "glpk"], capture_output=True, text=True)
                 if r.returncode != 0:
-                    _print_fail("brew install glpk", r.stderr.strip())
-                    success = False
+                    # Non-fatal: a failed solver install is a warning, not a hard
+                    # error — MUIOGO still runs; solvers are only needed to solve.
+                    _print_warn("brew install glpk failed", r.stderr.strip())
 
             if not cbc_ok:
                 r = _run([brew, "install", "cbc"], capture_output=True, text=True)
                 if r.returncode != 0:
-                    _print_fail("brew install cbc", r.stderr.strip())
-                    success = False
+                    # Non-fatal. On Intel macOS there's often no prebuilt CBC
+                    # bottle, so brew builds from source and can fail; we warn and
+                    # point the user at the manual install instead of failing.
+                    _print_warn("brew install cbc failed", r.stderr.strip())
 
     # ── Linux ─────────────────────────────────────────────────────────────
     elif SYSTEM == "Linux":
@@ -1097,6 +1100,9 @@ def _print_solver_manual_instructions() -> None:
             print("  GLPK:  brew install glpk")
         if cbc_missing:
             print("  CBC:   brew install cbc")
+            if platform.machine() == "x86_64":
+                print("         On Intel Macs Homebrew builds CBC from source (slow and may")
+                print("         fail); or set SOLVER_CBC_PATH in .env to an existing cbc binary.")
         print()
     else:
         if glpk_missing:
@@ -1436,15 +1442,17 @@ def main() -> int:
     results["App secret key"] = (_ensure_secret_key_in_env(), str(ENV_FILE))
 
     solver_ok = install_solvers(yes=args.yes)
+    glpk_present = _resolve_solver_binary("glpsol", "SOLVER_GLPK_PATH") is not None
+    cbc_present = _resolve_solver_binary("cbc", "SOLVER_CBC_PATH") is not None
     if not solver_ok:
         solver_detail = "see errors above"
-    elif (
-        _resolve_solver_binary("glpsol", "SOLVER_GLPK_PATH") is not None
-        and _resolve_solver_binary("cbc", "SOLVER_CBC_PATH") is not None
-    ):
+    elif glpk_present and cbc_present:
         solver_detail = "GLPK & CBC installed"
     else:
-        solver_detail = "warning: GLPK/CBC not installed (optional — see solver notes above)"
+        missing = " & ".join(
+            name for name, present in (("GLPK", glpk_present), ("CBC", cbc_present)) if not present
+        )
+        solver_detail = f"warning: {missing} not installed (optional — see solver notes above)"
     results["Solver dependencies (GLPK & CBC)"] = (solver_ok, solver_detail)
 
     demo_detail = ""
