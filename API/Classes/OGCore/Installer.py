@@ -84,8 +84,7 @@ class Installer:
             ["git", *args],
             cwd=str(cwd),
             env=env or Config.ogc_clean_env(),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             text=True,
             timeout=timeout,
         )
@@ -149,8 +148,7 @@ class Installer:
             out = subprocess.run(
                 [str(python_path), "-W", "ignore", "-c", code],
                 env=Config.ogc_clean_env(),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 text=True,
                 timeout=120,
             )
@@ -396,8 +394,7 @@ class Installer:
             out = subprocess.run(
                 ["uv", "--version"],
                 env=Config.ogc_clean_env(),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 text=True,
                 timeout=30,
             )
