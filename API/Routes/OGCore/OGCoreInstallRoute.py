@@ -5,9 +5,11 @@ these endpoints and the backend either wraps the OG-Core universal installer
 (catalog / repo URL) or validates and records a local copy. See:
     Track1-API-Schema-Discussion/OGCore-API-Schema-FINAL.md
 """
+import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlparse
 
 from flask import Blueprint, jsonify, request
 
@@ -25,11 +27,44 @@ ogcore_install_api = Blueprint("OGCoreInstallRoute", __name__, url_prefix="/ogc"
 
 _COUNTRY_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 _GIT_URL_RE = re.compile(r"^(https://|http://|git@|ssh://)", re.IGNORECASE)
+_INSTALL_ID_RE = re.compile(r"^install_\d{4}_\d{2}_\d{2}_\d{3}$")
+_LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
 
 # ── small helpers ────────────────────────────────────────────────────────────
 def _err(message, http=400, status="error"):
     return jsonify({"message": message, "status_code": status}), http
+
+
+def _blocked_cross_site():
+    """Refuse a state-changing request that a cross-site page drove via the browser.
+
+    A browser always attaches an Origin header on a cross-origin POST, so if one is
+    present it must be the local app. Non-browser callers (the desktop shell, curl,
+    tests) send no Origin and are allowed, matching the app's local-only model.
+    Returns an error response to short-circuit, or None to proceed.
+    """
+    origin = request.headers.get("Origin")
+    if origin:
+        host = urlparse(origin).hostname
+        if host not in _LOCAL_HOSTS:
+            return _err("Cross-site request refused.", http=403)
+    return None
+
+
+def _clean_path(raw):
+    """Normalise a user-supplied path; reject null bytes. Returns an abspath or None.
+
+    We do not confine local_path to a base dir: registering an existing clone from
+    anywhere on disk is an intended feature. This only rejects the obviously unsafe
+    (null bytes) and normalises, so downstream sees a clean absolute path.
+    """
+    if not raw or "\x00" in raw:
+        return None
+    try:
+        return os.path.abspath(os.path.normpath(raw))
+    except (OSError, ValueError):
+        return None
 
 
 def _body():
@@ -80,6 +115,9 @@ def getInstalledCalibrations():
 # ── 3. pre-install check ─────────────────────────────────────────────────────
 @ogcore_install_api.route("/checkCalibration", methods=["POST"])
 def checkCalibration():
+    blocked = _blocked_cross_site()
+    if blocked:
+        return blocked
     data = _body()
     if data is None:
         return _err("Request body must be valid JSON.")
@@ -92,9 +130,11 @@ def checkCalibration():
     source_type = data["source_type"]
 
     if source_type == "local_path":
-        local_path = data.get("local_path")
-        if not local_path:
+        if not data.get("local_path"):
             return _err("Missing required field: local_path")
+        local_path = _clean_path(data["local_path"])
+        if not local_path:
+            return _err("That path is not valid.")
         path = Path(local_path)
         if not path.is_dir():
             return _err("That folder does not exist.", http=400)
@@ -154,20 +194,22 @@ def checkCalibration():
 # ── 4. install from catalog or Git URL ───────────────────────────────────────
 @ogcore_install_api.route("/installCalibration", methods=["POST"])
 def installCalibration():
+    blocked = _blocked_cross_site()
+    if blocked:
+        return blocked
     data = _body()
     if data is None:
         return _err("Request body must be valid JSON.")
     miss = _missing(data, "source_type", "country_id")
     if miss:
         return _err(f"Missing required field: {miss}")
-    country_id = data["country_id"]
-    if not _valid_country_id(country_id):
+    if not _valid_country_id(data["country_id"]):
         return _err("country_id must be a short code (letters, digits, - or _).")
-    if InstallJob.is_country_active(country_id):
-        return _err("An install is already running for this country.", status="error")
 
     source_type = data["source_type"]
-    dest_parent = data.get("dest_parent") or _default_dest_parent()
+    dest_parent = _clean_path(data.get("dest_parent") or _default_dest_parent())
+    if not dest_parent:
+        return _err("dest_parent is not a valid path.")
 
     if source_type == "catalog":
         catalog_key = data.get("catalog_key")
@@ -180,6 +222,9 @@ def installCalibration():
                 "Use a Git URL instead, or try again when the catalogue is reachable.",
                 http=404,
             )
+        # Key the install by the catalogue's own country_id so the card that reads
+        # the catalogue and the installed record always agree (no ETH/eth mismatch).
+        country_id = entry["country_id"]
         job = InstallJob.start_install(
             source_type="catalog",
             country_id=country_id,
@@ -191,6 +236,7 @@ def installCalibration():
         )
 
     elif source_type == "repo_url":
+        country_id = data["country_id"]
         repo_url = data.get("repo_url")
         if not repo_url:
             return _err("Missing required field: repo_url")
@@ -213,6 +259,8 @@ def installCalibration():
     else:
         return _err("source_type must be 'catalog' or 'repo_url'.")
 
+    if job is None:
+        return _err("An install is already running for this country.")
     return jsonify({
         "status_code": "success",
         "install_id": job["install_id"],
@@ -224,6 +272,9 @@ def installCalibration():
 # ── 5. register an existing local copy ───────────────────────────────────────
 @ogcore_install_api.route("/registerLocalCalibration", methods=["POST"])
 def registerLocalCalibration():
+    blocked = _blocked_cross_site()
+    if blocked:
+        return blocked
     data = _body()
     if data is None:
         return _err("Request body must be valid JSON.")
@@ -233,19 +284,22 @@ def registerLocalCalibration():
     country_id = data["country_id"]
     if not _valid_country_id(country_id):
         return _err("country_id must be a short code (letters, digits, - or _).")
-    if not Path(data["local_path"]).is_dir():
+    local_path = _clean_path(data["local_path"])
+    if not local_path:
+        return _err("That path is not valid.")
+    if not Path(local_path).is_dir():
         return _err("That folder does not exist.")
-    if InstallJob.is_country_active(country_id):
-        return _err("A registration is already running for this country.")
 
     run_uv_sync = data.get("run_uv_sync", True)
     job = InstallJob.start_local_register(
         country_id=country_id,
         country_name=data["country_name"],
-        local_path=data["local_path"],
+        local_path=local_path,
         package_name=data.get("package_name") or None,
         run_uv_sync=bool(run_uv_sync),
     )
+    if job is None:
+        return _err("A registration is already running for this country.")
     return jsonify({
         "status_code": "success",
         "install_id": job["install_id"],
@@ -260,6 +314,8 @@ def getInstallStatus():
     install_id = request.args.get("install_id")
     if not install_id:
         return _err("Missing required query value: install_id")
+    if not _INSTALL_ID_RE.match(install_id):
+        return _err("Invalid install_id.")
     job = InstallJob.get_status(install_id)
     if job is None:
         return _err("No install job with that id.", http=404)
@@ -280,6 +336,9 @@ def getInstallStatus():
 # ── 7. unregister ────────────────────────────────────────────────────────────
 @ogcore_install_api.route("/unregisterCalibration", methods=["POST"])
 def unregisterCalibration():
+    blocked = _blocked_cross_site()
+    if blocked:
+        return blocked
     data = _body()
     if data is None:
         return _err("Request body must be valid JSON.")
@@ -307,6 +366,9 @@ def unregisterCalibration():
 # ── 8. refresh / update ──────────────────────────────────────────────────────
 @ogcore_install_api.route("/refreshCalibration", methods=["POST"])
 def refreshCalibration():
+    blocked = _blocked_cross_site()
+    if blocked:
+        return blocked
     data = _body()
     if data is None:
         return _err("Request body must be valid JSON.")
@@ -320,6 +382,15 @@ def refreshCalibration():
 
     check_only = data.get("check_only", True)
     local_path = record.get("local_path")
+
+    # A locally-registered calibration is the user's own clone (possibly with
+    # uncommitted work). Never git pull / rebuild over it automatically; a check is
+    # fine, but applying an update must be the user's own action outside MUIOGO.
+    if not check_only and record.get("source_type") == "local_path":
+        return _err(
+            "This calibration was registered from a local folder, so MUIOGO will not "
+            "update it automatically. Update that clone yourself, then refresh."
+        )
 
     if check_only:
         result = Installer.check_update(local_path)
@@ -360,6 +431,8 @@ def refreshCalibration():
         repo_url=repo_url,
         package_name=record.get("package_name"),
     )
+    if job is None:
+        return _err("An update is already running for this country.")
     return jsonify({
         "status_code": "success",
         "install_id": job["install_id"],

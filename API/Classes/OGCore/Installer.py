@@ -17,7 +17,11 @@ streamed into log_tail for display).
 import codecs
 import os
 import re
+import shutil
+import stat
 import subprocess
+import threading
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -74,6 +78,52 @@ def read_pyproject_package_name(local_path):
 def import_name(package_name):
     """Module name to import: a project name normalised (og-eth -> og_eth)."""
     return (package_name or "").strip().replace("-", "_")
+
+
+def rmtree_force(path):
+    """Remove a directory tree, clearing read-only bits first.
+
+    A plain rmtree fails on Windows for a git clone, because .git pack/object files
+    are read-only; the error handler clears the bit and retries so the partial tree
+    is actually removed.
+    """
+    def _on_error(func, target, _exc):
+        try:
+            os.chmod(target, stat.S_IWRITE)
+            func(target)
+        except OSError:
+            pass
+
+    shutil.rmtree(path, onerror=_on_error)
+
+
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+_FAILURE_MARKERS = (
+    "[fail]", "error", "fatal:", "not found", "not installed",
+    "is required", "could not", "no such", "missing",
+)
+
+
+def summarize_failure(lines):
+    """Pull the meaningful failure reason out of captured installer output.
+
+    Failure is still decided from the exit code; this only builds a human message
+    for the `error` field so the frontend can show why an install failed (e.g. git
+    or uv missing) without the user opening log_tail. Returns "" if nothing useful.
+    """
+    cleaned = []
+    for line in lines:
+        stripped = _ANSI_RE.sub("", line).strip()
+        if stripped:
+            cleaned.append(stripped)
+    hits = [s for s in cleaned if any(m in s.lower() for m in _FAILURE_MARKERS)]
+    picked = hits[-3:] if hits else cleaned[-2:]
+    seen, out = set(), []
+    for s in picked:
+        if s not in seen:
+            seen.add(s)
+            out.append(s)
+    return " | ".join(out)
 
 
 class Installer:
@@ -214,12 +264,14 @@ class Installer:
         return cmd
 
     @staticmethod
-    def _stream(cmd, log, cwd=None):
+    def _stream(cmd, log, cwd=None, timeout=_SUBPROCESS_TIMEOUT_SECONDS):
         """Run cmd, stream output into `log`, return the exit code.
 
-        Reads raw chunks and splits on both newline and carriage-return, so git and
-        uv progress bars (which update in place with \\r, not \\n) surface as they
-        arrive instead of buffering into one blob until the process exits.
+        A reader thread drains stdout and splits on both newline and carriage-return,
+        so git and uv progress bars (which update in place with \\r) surface as they
+        arrive. The reader runs under a wall-clock deadline: if the child hangs and
+        produces nothing, the blocking read cannot stall us forever, we kill it and
+        return, so the job finishes and its country lock is released.
         """
         proc = subprocess.Popen(
             cmd,
@@ -229,34 +281,52 @@ class Installer:
             stderr=subprocess.STDOUT,
             bufsize=0,  # unbuffered: deliver bytes as the child flushes them
         )
-        decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
-        pending = ""
-        try:
-            while True:
-                chunk = proc.stdout.read(256)
-                if not chunk:
-                    break
-                pending += decoder.decode(chunk)
-                # Emit every complete segment ended by \r or \n.
+
+        def _reader():
+            decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+            pending = ""
+            try:
                 while True:
-                    match = re.search(r"[\r\n]", pending)
-                    if match is None:
+                    chunk = proc.stdout.read(256)
+                    if not chunk:
                         break
-                    segment = pending[: match.start()].strip()
-                    pending = pending[match.end():]
-                    if segment:
-                        log(segment)
-            pending += decoder.decode(b"", final=True)
-            if pending.strip():
-                log(pending.strip())
-            return proc.wait(timeout=_SUBPROCESS_TIMEOUT_SECONDS)
-        except subprocess.TimeoutExpired:
+                    pending += decoder.decode(chunk)
+                    while True:
+                        match = re.search(r"[\r\n]", pending)
+                        if match is None:
+                            break
+                        segment = pending[: match.start()].strip()
+                        pending = pending[match.end():]
+                        if segment:
+                            log(segment)
+                pending += decoder.decode(b"", final=True)
+                if pending.strip():
+                    log(pending.strip())
+            except (OSError, ValueError):
+                pass
+
+        reader = threading.Thread(target=_reader, daemon=True)
+        reader.start()
+        reader.join(timeout=timeout)
+
+        if reader.is_alive():
+            # Deadline hit while the child was still running (possibly hung).
             proc.kill()
             log("Install timed out and was stopped.")
-            return 124
-        finally:
+            reader.join(timeout=5)
             if proc.stdout:
                 proc.stdout.close()
+            return 124
+
+        # Reader saw EOF, so the child has closed its pipe and should be exiting.
+        try:
+            rc = proc.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            rc = 124
+        if proc.stdout:
+            proc.stdout.close()
+        return rc
 
     # ── orchestration: catalog / repo_url install ────────────────────────────
     @classmethod
@@ -277,6 +347,10 @@ class Installer:
         script = cls.ensure_installer_script()
 
         local_path = dest_parent / repo_name
+        # Whether the target already existed decides cleanup on failure: a fresh
+        # install that fails should not leave a broken half-clone for the next retry,
+        # but an update over an existing clone must never be deleted.
+        pre_existed = local_path.exists()
         cmd = cls._build_command(
             script, source_type=source_type, dest_parent=dest_parent,
             catalog_key=catalog_key, repo_url=repo_url, branch=branch,
@@ -284,29 +358,45 @@ class Installer:
 
         progress("uv_sync", "Cloning and installing dependencies with uv")
         log(f"Running installer for {repo_name}...")
-        rc = cls._stream(cmd, log)
+        # Capture the installer output so a failure can carry a useful reason in the
+        # error field (e.g. git or uv missing), not just the exit code, since the
+        # frontend may never open log_tail.
+        captured = []
+
+        def _capture(line):
+            captured.append(line)
+            log(line)
+
+        rc = cls._stream(cmd, _capture)
 
         venv_path = local_path / ".venv"
         python_path = Config.venv_python_path(venv_path)
 
+        def _fresh_fail(message):
+            if not pre_existed:
+                rmtree_force(local_path)
+            return cls._fail(local_path, venv_path, python_path, message)
+
         if rc != 0:
-            return cls._fail(local_path, venv_path, python_path,
-                             f"Installer exited with code {rc}.")
+            reason = summarize_failure(captured)
+            message = (
+                f"Installer failed (exit {rc}): {reason}"
+                if reason
+                else f"Installer exited with code {rc}."
+            )
+            return _fresh_fail(message)
         if not python_path.exists():
-            return cls._fail(local_path, venv_path, python_path,
-                             "Install finished but no environment was created.")
+            return _fresh_fail("Install finished but no environment was created.")
 
         # Package: from the register for catalog installs, else inferred post-clone.
         pkg = package_name or read_pyproject_package_name(local_path)
         if not pkg:
-            return cls._fail(local_path, venv_path, python_path,
-                             "Could not determine the package name to verify.")
+            return _fresh_fail("Could not determine the package name to verify.")
 
         progress("verify_import", "Verifying the model imports")
         ok, detail = cls.verify_import(python_path, pkg)
         if not ok:
-            return cls._fail(local_path, venv_path, python_path,
-                             f"Import check failed: {detail}")
+            return _fresh_fail(f"Import check failed: {detail}")
         log(f"Imported {import_name(pkg)} ({detail}).")
 
         progress("register", "Recording the installed calibration")

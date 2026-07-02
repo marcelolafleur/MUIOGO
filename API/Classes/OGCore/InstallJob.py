@@ -133,6 +133,10 @@ class InstallJob:
     @classmethod
     def _finalize_success(cls, install_id, *, source_type, country_id,
                           country_name, result):
+        now = _now_iso()
+        # Preserve the original install date across an update (re-running over an
+        # existing calibration); only a first install sets installed_at.
+        existing = CalibrationRegistry.get(country_id)
         record = {
             "country_id": country_id,
             "country_name": country_name,
@@ -144,9 +148,11 @@ class InstallJob:
             "repo_url": result.get("repo_url"),
             "commit_sha": result.get("commit_sha"),
             "install_state": "installed",
-            "installed_at": _now_iso(),
-            "last_checked_at": _now_iso(),
+            "installed_at": existing.get("installed_at", now) if existing else now,
+            "last_checked_at": now,
         }
+        if existing:
+            record["last_updated_at"] = now
         CalibrationRegistry.upsert(record)
         with cls._lock:
             job = cls._jobs.get(install_id)
@@ -205,12 +211,17 @@ class InstallJob:
 
     @classmethod
     def _launch(cls, *, country_id, country_name, source_type, work_fn):
-        install_id = cls._new_install_id()
-        job = cls._init_job(
-            install_id, country_id=country_id, country_name=country_name,
-            source_type=source_type,
-        )
+        # Check-and-claim the country under one lock so two concurrent requests for
+        # the same country cannot both start and clone into the same directory.
+        # Returns None if an install for this country is already running.
         with cls._lock:
+            if country_id in cls._active_by_country:
+                return None
+            install_id = cls._new_install_id()  # RLock is reentrant
+            job = cls._init_job(
+                install_id, country_id=country_id, country_name=country_name,
+                source_type=source_type,
+            )
             cls._jobs[install_id] = job
             cls._active_by_country[country_id] = install_id
             initial = dict(job)  # snapshot before the thread can advance it
