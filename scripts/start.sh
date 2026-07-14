@@ -17,7 +17,6 @@ if [ -n "${CONDA_DEFAULT_ENV:-}" ]; then
     exit 1
 fi
 
-#VENV_DIR="${MUIOGO_VENV_DIR:-$HOME/.venvs/muiogo}" - use project-local venv instead
 VENV_DIR="${MUIOGO_VENV_DIR:-$PROJECT_ROOT/.venv}"
 PYTHON="$VENV_DIR/bin/python"
 HOST="127.0.0.1"
@@ -27,8 +26,7 @@ TIMEOUT_SECONDS=30
 
 if [ ! -x "$PYTHON" ]; then
     echo "ERROR: Venv Python not found at: $PYTHON"
-    echo "Run setup first:"
-    echo "  ./scripts/setup.sh"
+    echo "From the MUIOGO project directory, run 'uv sync'."
     exit 1
 fi
 
