@@ -80,13 +80,16 @@ if not os.access(DATA_STORAGE, os.W_OK):
 # -------------------------
 # OG country models live in their OWN uv environments, installed by the OG-Core
 # Universal Installer. MUIOGO neither installs nor imports OG-Core; it drives the
-# installer and tracks what is installed. See:
-#   universal installer setup OGC/Universal-Installer-Master-Doc.md
-#   Track1-API-Schema-Discussion/OGCore-API-Schema-FINAL.md
+# installer and tracks what is installed.
 
-# MUIOGO-side storage (registry + install-job state) lives under DataStorage,
-# never inside a calibration's .venv.
-OGC_DATA_STORAGE = DATA_STORAGE / "OGCore"
+# MUIOGO-side OG state (registry, install-job state, caches) lives at the user level
+# under ~/.muiogo, never inside the CLEWS DataStorage tree and never inside a
+# calibration's .venv. Keeping it out of DataStorage is what stops the CLEWS case
+# picker (and the other DataStorage walkers) from treating it as a case. See #500.
+OGC_DATA_STORAGE = Path(
+    os.environ.get("MUIOGO_OG_DATA_DIR", "").strip()
+    or (Path.home() / ".muiogo" / "og-state")
+)
 OGC_INSTALLED_REGISTRY = OGC_DATA_STORAGE / "og_calibrations_installed.json"
 OGC_INSTALL_JOBS_DIR = OGC_DATA_STORAGE / "install_jobs"
 OGC_CATALOG_CACHE = OGC_DATA_STORAGE / "catalog_cache.json"
