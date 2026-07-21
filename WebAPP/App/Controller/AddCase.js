@@ -814,7 +814,7 @@ export default class AddCase {
 
                 //provjera da brisemo tacan commoditu
                 if(model.commodities[id].CommId != commId ||commId != htmlcommId){ 
-                    Message.bigBoxDanger('Commodity deletion error', `Wrong index!! <b>${model.comms[id].CommId}</b>?`, 3000);
+                    Message.bigBoxDanger('Commodity deletion error', `Wrong index!! <b>${model.commodities[id].CommId}</b>?`, 3000);
                     return false;
                 }
 
