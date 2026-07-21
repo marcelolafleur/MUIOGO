@@ -557,7 +557,7 @@ def handle_full_zip(file, filepath=None):
 
                         resPath = Path(Config.DATA_STORAGE,casename,'res')
                         viewPath = Path(Config.DATA_STORAGE,casename,'view')
-                        resDataPath = Path(Config.DATA_STORAGE,case,'view','resData.json')
+                        resDataPath = Path(Config.DATA_STORAGE,casename,'view','resData.json')
                         
                         if os.path.exists(resPath):
                             shutil.rmtree(resPath)
