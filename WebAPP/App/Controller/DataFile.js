@@ -870,7 +870,7 @@ export default class DataFile {
         $("#osy-batchRun").on('click', function (event) {
             //console.log('BATCH RUN')
             Pace.restart();
-            Message.loaderStart('BATCH RUN! Plese wait...');
+            Message.loaderStart('BATCH RUN! Please wait...');
 
             let batchRunCases = [];
             $("input:checkbox[name=type]:checked").each(function(){
@@ -917,7 +917,7 @@ export default class DataFile {
         $("#osy-cleanUp").on('click', function (event) {
             //console.log('BATCH RUN')
             Pace.restart();
-            Message.loaderStart('Recycle all results! Plese wait...');
+            Message.loaderStart('Recycle all results! Please wait...');
 
             Osemosys.cleanUp(model.casename)
             .then(response => {

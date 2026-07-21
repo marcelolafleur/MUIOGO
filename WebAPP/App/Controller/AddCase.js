@@ -352,7 +352,7 @@ export default class AddCase {
                     Message.bigBoxDanger('Technology deletion error', `Wrong index!! <b>${model.techs[id].Tech}</b>?`, 3000);
                 }
                 if(model.techs[id].TG.length>0){          
-                    Message.confirmationDialog('Technology deletion warning', `Technology <b>${model.techs[id].Tech}</b> has technology group membership(s). Deleting the technology could impact visalisation of results for previously run cases. Are you sure you want to proceed?`, model, $divTech, id, rowid, techId)
+                    Message.confirmationDialog('Technology deletion warning', `Technology <b>${model.techs[id].Tech}</b> has technology group membership(s). Deleting the technology could impact visualisation of results for previously run cases. Are you sure you want to proceed?`, model, $divTech, id, rowid, techId)
                 }
                 else{
                     $divTech.jqxGrid('deleterow', rowid);
@@ -380,7 +380,7 @@ export default class AddCase {
                 }
             }
             else {
-                Message.bigBoxWarning('Warning', 'You cannot delete. At least one technology is neccessary.', 3000);
+                Message.bigBoxWarning('Warning', 'You cannot delete. At least one technology is necessary.', 3000);
             }
         });
 
@@ -391,7 +391,7 @@ export default class AddCase {
             var rowBoundIndex = args.rowindex;
             var value = args.newvalue.trim();
             if (column == 'CapUnitId' || column == 'ActUnitId') {
-                Message.bigBoxWarning('Unit change warninig!', 'Changing technology unit will not recalculate entered nor default values in the model.', 3000);
+                Message.bigBoxWarning('Unit change warning!', 'Changing technology unit will not recalculate entered nor default values in the model.', 3000);
             }
             if (column != 'IAR' && column != 'OAR' && column != 'EAR' && column != 'INCR' && column != 'ITCR'  && column != 'TG') {
                 model.techs[rowBoundIndex][column] = value;
@@ -577,7 +577,7 @@ export default class AddCase {
 
             let rowId = model.seCount-1;
             if(rowId == 0){
-                Message.bigBoxWarning('Warning', 'You cannot delete. At least one season is neccessary.', 3000);
+                Message.bigBoxWarning('Warning', 'You cannot delete. At least one season is necessary.', 3000);
             }else{
                 var seId = $divSe.jqxGrid('getcellvalue', rowId, 'SeId');
                 $divSe.jqxGrid('deleterow',rowId );
@@ -665,7 +665,7 @@ export default class AddCase {
 
             let rowId = model.dtCount-1;
             if(rowId == 0){
-                Message.bigBoxWarning('Warning', 'You cannot delete. At least one day type is neccessary.', 3000);
+                Message.bigBoxWarning('Warning', 'You cannot delete. At least one day type is necessary.', 3000);
             }else{
                 var dtId = $divDt.jqxGrid('getcellvalue', rowId, 'DtId');
                 $divDt.jqxGrid('deleterow',rowId );
@@ -753,7 +753,7 @@ export default class AddCase {
             let rowId = model.dtbCount-1;
             var dtbId = $divDtb.jqxGrid('getcellvalue', rowId, 'DtbId');
             if(rowId == 0){
-                Message.bigBoxWarning('Warning', 'You cannot delete. At least one daily itme bracket is neccessary.', 3000);
+                Message.bigBoxWarning('Warning', 'You cannot delete. At least one daily time bracket is necessary.', 3000);
             }else{
                 $divDtb.jqxGrid('deleterow',rowId );
                 model.dailytimebrackets.splice(rowId, 1);
@@ -835,7 +835,7 @@ export default class AddCase {
                 });
             }
             else{
-                Message.bigBoxWarning('Warning', 'You cannot delete. At least one commodity is neccessary.', 3000);
+                Message.bigBoxWarning('Warning', 'You cannot delete. At least one commodity is necessary.', 3000);
             }
         });
 
@@ -846,7 +846,7 @@ export default class AddCase {
             var value = args.newvalue.trim();
             model.commodities[rowBoundIndex][column] = value;
             if (column == 'UnitId') {
-                Message.bigBoxWarning('Unit change warninig!', 'Changing commodity unit will not recalculate entered nor default values in the model.', 3000);
+                Message.bigBoxWarning('Unit change warning!', 'Changing commodity unit will not recalculate entered nor default values in the model.', 3000);
             }
             if (column == 'Comm') {
                 var commId = $divComm.jqxGrid('getcellvalue', rowBoundIndex, 'CommId');
@@ -901,7 +901,7 @@ export default class AddCase {
             var value = args.newvalue.trim();
             model.emissions[rowBoundIndex][column] = value;
             if (column == 'UnitId') {
-                Message.bigBoxWarning('Unit change warninig!', 'Changing emission unit will not recalculate entered nor default values in the model.', 3000);
+                Message.bigBoxWarning('Unit change warning!', 'Changing emission unit will not recalculate entered nor default values in the model.', 3000);
             }
             if (column == 'Emis') {
                 var emisId = $divEmi.jqxGrid('getcellvalue', rowBoundIndex, 'EmisId');
@@ -982,7 +982,7 @@ export default class AddCase {
                 if(model.caserunByScenario[model.scenarios[id]['ScenarioId']].length != 0){
                     Message.bigBoxDanger('Alert', 
                         `You cannot delete this scenario. It is used in ${model.caserunByScenario[model.scenarios[id]['ScenarioId']]}  caserun(s)! 
-                        Plese reomve these scenario from caseruns before deletion.`, null)
+                        Please remove these scenario from caseruns before deletion.`, null)
                 }
                 else{
                     let scId = model.scenarios[id]['ScenarioId'];
