@@ -462,10 +462,8 @@ export default class DataFile {
                 // if (Base.AWS_SYNC == 1){
                 //     Base.updateSync(model.casename, "data.txt");
                 // }
-                if (Base.HEROKU == 0) {
-                    $("#osy-run").show();
-                    //$("#osy-solver").show();
-                }
+                $("#osy-run").show();
+                //$("#osy-solver").show();
                 //Message.clearMessages();
                 //Message.bigBoxSuccess('Generate message', message, 3000);
                 Message.loaderEnd();
