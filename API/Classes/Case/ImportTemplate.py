@@ -471,7 +471,7 @@ class ImportTemplate():
             df_sheet_all = pd.read_excel(self.TEMPLATE_PATH, sheet_name=None, engine='openpyxl')
 
             required_sheets = [
-                'TECHNOLOGY', 'FUEL', 'EMISSION', 'STORAGE', 'YEAR',
+                'TECHNOLOGY', 'TECHGROUP', 'FUEL', 'EMISSION', 'STORAGE', 'YEAR',
                 'MODE_OF_OPERATION', 'TIMESLICE', 'SEASON', 'DAYTYPE',
                 'DAILYTIMEBRACKET', 'InputActivityRatio', 'OutputActivityRatio',
                 'EmissionActivityRatio', 'TechnologyFromStorage', 'TechnologyToStorage'
