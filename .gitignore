@@ -3,11 +3,15 @@ assets/demo-data/CLEWs.Demo.zip
 
 Procfile
 .env
+.runtime/
+WebAPP/app.log
 dist/
 build/
 venv/
 venv
 .venv/
+*.egg-info/
+
 # Generic Python caches/artifacts
 __pycache__/
 *.py[cod]
@@ -20,6 +24,10 @@ __pycache__/
 .coverage
 .coverage.*
 htmlcov/
+
+# Installer log files
+.install-*.log
+scripts/.install-*.log
 
 # OS artifacts
 .DS_Store
@@ -43,6 +51,8 @@ WebAPP/SOLVERs/_COIN-OR
 WebAPP/DataStorage/*
 !WebAPP/DataStorage/Parameters.json
 !WebAPP/DataStorage/Variables.json
+!WebAPP/DataStorage/Indicators.json
+!WebAPP/DataStorage/Duals.json
 
 WebAPP/References/jqwidgets_licenced
 WebAPP/References/jqwidgets_free

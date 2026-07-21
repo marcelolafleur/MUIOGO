@@ -22,6 +22,10 @@ export default class Pivot {
                     promise.push(resData);
                     const VARIABLES = Osemosys.getParamFile('Variables.json');
                     promise.push(VARIABLES);
+                    const INDICATORS = Osemosys.getParamFile('Indicators.json');
+                    promise.push(INDICATORS);
+                    const DUALS = Osemosys.getParamFile('Duals.json');
+                    promise.push(DUALS);
                     const VIEWS = Osemosys.getResultData(casename,'viewDefinitions.json');
                     promise.push(VIEWS);
                     const DATA = Osemosys.getResultData(casename, 'RYT.json');
@@ -37,9 +41,9 @@ export default class Pivot {
                     // throw new Error('No model selected');
                 }
             })
-            .then(data => {      
-                let [casename, genData, resData, VARIABLES, VIEWS, DATA] = data;         
-                let model = new Model(casename, genData, resData, VARIABLES, DATA, VIEWS);
+            .then(data => {
+                let [casename, genData, resData, VARIABLES, INDICATORS, DUALS, VIEWS, DATA] = data;
+                let model = new Model(casename, genData, resData, VARIABLES, INDICATORS, DUALS, DATA, VIEWS);
                 this.initPage(model);
             })
             .catch(error => {
@@ -64,6 +68,10 @@ export default class Pivot {
                 promise.push(resData);
                 const VARIABLES = Osemosys.getParamFile('Variables.json');
                 promise.push(VARIABLES);
+                const INDICATORS = Osemosys.getParamFile('Indicators.json');
+                promise.push(INDICATORS);
+                const DUALS = Osemosys.getParamFile('Duals.json');
+                promise.push(DUALS);
                 const VIEWS = Osemosys.getResultData(casename, 'viewDefinitions.json');
                 promise.push(VIEWS);
                 const DATA = Osemosys.getResultData(casename, 'RYT.json');
@@ -71,15 +79,13 @@ export default class Pivot {
                 return Promise.all(promise);
             })
             .then(data => {
-                
-                let [casename, genData, resData, VARIABLES, VIEWS, DATA] = data;
-                let model = new Model(casename, genData, resData, VARIABLES, DATA, VIEWS);
+                let [casename, genData, resData, VARIABLES, INDICATORS, DUALS, VIEWS, DATA] = data;
+                let model = new Model(casename, genData, resData, VARIABLES, INDICATORS, DUALS, DATA, VIEWS);
                 model.refreshPage = true;
                 this.initPage(model);
                 //this.initEvents(model);
             })
             .catch(error => {
-                console.log('error ', error)
                 setTimeout(function () {
                     if (error.status_code == 'CaseError') {
                         MessageSelect.init(Pivot.refreshPage.bind(Pivot));
@@ -384,7 +390,7 @@ export default class Pivot {
     static initEvents(model, app) {
 
 
-        console.log('model ', model)
+        //console.log('model ', model)
         $("#casePicker").off('click');
         $("#casePicker").on('click', '.selectCS', function (e) {
             e.preventDefault();
@@ -429,7 +435,6 @@ export default class Pivot {
             let viewId = DefaultObj.getId('VIEW');
 
             app.engine.fields.getField('Unit').isContentHtml = true;
-            console.log('param ', param, model.group)
             //ako nije demand jer ne zavisi od T
             if(param == 'D'){
                 app.engine.fields.getField('Comm').isContentHtml = true;
@@ -554,21 +559,23 @@ export default class Pivot {
         Message.loaderStart('Preparing pivot data...')
         model.group = model.VARGROUPS[param]['group'];
         model.param = param;
-
         Osemosys.getResultData(model.casename, model.group+'.json')
         .then(DATA => {
-            console.log('DATA ', DATA)
+            //console.log('DATA ', DATA, model.group)
             if (DATA !== null && model.param in DATA && Object.getOwnPropertyNames(DATA[model.param]).length != 0){
                 let pivotData = DataModelResult.getPivot(DATA, model.genData, model.VARIABLES, model.group, model.param);
-                console.log('pivotData ', pivotData)
                 model.pivotData = pivotData;
                 app.engine.itemsSource = model.pivotData;
 
 
-                console.log('pivot source ok')
+                //console.log('pivot source ok')
                 if (model.group == 'R'){
                     app.engine.columnFields.push('Optimal');
                     app.engine.rowFields.push('Case');
+                    app.engine.valueFields.push('Value');
+                }
+                else if(model.group == 'RY' ){
+                    app.engine.rowFields.push('Case','Year');
                     app.engine.valueFields.push('Value');
                 }
                 else if(model.group == 'RYE' ){
@@ -593,14 +600,14 @@ export default class Pivot {
                 }
 
                 else if(model.group == "RYTC" || model.group == 'RYTCMTs' ){
-                    console.log(app.engine.columnFields)
+                    //console.log(app.engine.columnFields)
                     app.engine.columnFields.push('Comm');
-                    console.log('com tech added')
+                    //console.log('com tech added')
                     app.engine.rowFields.push('Case','Year');
                     app.engine.valueFields.push('Value');
                 }
                 else{
-                    console.log('else')
+                    //console.log('else')
                     app.engine.columnFields.push('Tech');
                     app.engine.rowFields.push('Case', 'Year');
                     app.engine.valueFields.push('Value');
@@ -615,12 +622,12 @@ export default class Pivot {
                 //     }
                 // });
 
-                console.log('app.engine.valueFields ', app.engine.valueFields, model.stgDecimalPoints)
+                //console.log('app.engine.valueFields ', app.engine.valueFields, model.stgDecimalPoints)
                 // app.engine.valueFields.format =  model.stgDecimalPoints;
                 // app.engine.refresh();
                 app.engine.fields.getField('Value').format = model.stgDecimalPoints;
 
-                console.log('fields ok')
+                //console.log('fields ok')
                 //update defaul model
                 model.DEFAULTVIEW = JSON.parse(JSON.stringify(app.engine.viewDefinition));
                 //model.DEFAULTVIEW = app.engine.viewDefinition;
@@ -638,9 +645,9 @@ export default class Pivot {
                     model.TriggerUpdate = true;
                     Html.title(model.casename, model.VARNAMES[model.group][model.param], model.group+' - Default view');
                 }
-                console.log('view ok')
+                //console.log('view ok')
                 app.engine.fields.getField('Unit').isContentHtml = true;
-                if(model.group != "RYS" && model.group != "RYCTs" && model.group != "RYC" && model.group != "RYE" && model.group != "RYCn"&& model.group != "R"){
+                if(model.group != "RYS" && model.group != "RYCTs" && model.group != "RYC" && model.group != "RYE" && model.group != "RYCn" && model.group != "R"  && model.group != "RY"){
                     app.engine.fields.getField('Tech').isContentHtml = true;
                     app.engine.fields.getField('Tech Desc').isContentHtml = true;
                 }

@@ -2,6 +2,13 @@ import { CURRENCY, UNITDEFINITION } from './Const.Class.js';
 import { Message } from "./Message.Class.js";
 
 export class Html {
+    static renderPreformatted(target, text, emptyMessage = '') {
+        const $target = $(target);
+        const content = text == null || text === '' ? emptyMessage : String(text);
+
+        $target.empty();
+        $target.append($('<pre>', { class: 'log-output' }).text(content));
+    }
 
     static renderModels(cases, selectedCS) {
         $('#cases').empty();
@@ -198,7 +205,7 @@ export class Html {
         //     $("#osy-DataFile").html('Data file is to large for preview.');
         // }
 
-        $("#osy-DataFile").html('<pre class="log-output">'+DataFile+'</pre>');
+        Html.renderPreformatted('#osy-DataFile', DataFile, 'Data file preview unavailable.');
 
         $('#tabs a[href="#tabDataFile"]').tab('show');
 
@@ -207,6 +214,10 @@ export class Html {
                 File
             </a>`);
 
+    }
+
+    static renderModelFile(ModelFile){
+        Html.renderPreformatted('#osy-ModelFile', ModelFile, 'Model file preview unavailable.');
     }
 
     static appendCasePicker(value, selectedCS, pageId) {
@@ -234,8 +245,8 @@ export class Html {
     }
 
     static title(casename, title, group, scCount) {
-        $("#osy-case").html(casename);
-        $("#osy-title").html('<i class="fa fa-home fa-lg"></i>' + title + ' <small>' + group + '</small>');
+        $("#osy-case").html('<i class="fa fa-cubes"></i>' + casename);
+        $("#osy-title").html( title + ' <small>' + group + '</small>');
     }
 
     static lblScenario(label) {
@@ -274,7 +285,15 @@ export class Html {
         $("#emisCount").text(model.emisCount);
         $("#scenariosCount").text(model.scenariosCount);
         $("#constraintsCount").text(model.constraintsCount);
+        $("#indicatorsCount").text(model.indicatorsCount);
 
+    }
+
+    static renderCounters(model) {
+        $("#dualCounts").text(model.DualCounts);
+        $("#indicatorCounts").text(model.IndicatorCounts);
+        $("#varCounts").text(model.VarCounts);
+        $("#paramCounts").text(model.ParamCounts);     
     }
 
     static importData() {
@@ -723,19 +742,76 @@ export class Html {
                 sortableList1 = sortableList1 + sortableElement;
             });
 
-
             $("#osy-unitRuleSort1").html(sortableList1);
             $("#osy-unitRuleSort1").jqxSortable();
 
-            // $("#osy-unitParamRuleSort2").html(sortableList2);
-            // $("#osy-unitParamRuleSort2").jqxSortable(); 
             $("#osy-unitRuleSort1, #osy-unitRuleSort2").jqxSortable({
                 connectWith: ".osy-unitRuleSort",
                 opacity: 0.5,
             });
         }
-
     }
+
+
+    static renderIndicatorFormula(rules, unitsDef, indicatorDef) {
+        $("#osy-indFormulaSort1").empty();
+        $("#osy-indFormulaSort2").empty();
+        var sortableList1 = '';
+        var sortableList2 = '';
+        if (typeof rules !== "undefined") {
+            $.each(indicatorDef, function (id, rule) {
+
+                if (!rules['cat'].some(e => e.var === id)) {
+                    //console.log('rule.val, unitsDef ', rule.ruleVal, unitsDef)
+                    let res = jsonLogic.apply(rule.ruleVal, unitsDef)
+                    var sortableElement =
+                        `<div class="sortable-item" id="${id}">${res}</div>`;
+                    sortableList1 = sortableList1 + sortableElement;
+                }
+            });
+
+            $.each(rules['cat'], function (id, rule) {
+                let res = jsonLogic.apply(rule, unitsDef)
+                var sortableElement =
+                    `<div class="sortable-item" id="${rule.var}">${res}</div>`;
+                sortableList2 = sortableList2 + sortableElement;
+            });
+
+            $("#osy-indFormulaSort1").html(sortableList1);
+            //$("#osy-indFormulaSort1").jqxSortable();
+
+            $("#osy-indFormulaSort2").html(sortableList2);
+            //$("#osy-indFormulaSort2").jqxSortable();
+            // $("#osy-indFormulaSort1, #osy-indFormulaSort2").jqxSortable({
+            //     connectWith: ".osy-indRuleSort",
+            //     opacity: 0.5,
+            // });
+            
+            $("#osy-indFormulaSort1, #osy-indFormulaSort2").jqxSortable({
+                connectWith: ".osy-indRuleSort",
+                opacity: 0.5,
+            });
+
+        } else {
+            console.log('else')
+            $.each(indicatorDef, function (id, rule) {
+                let res = jsonLogic.apply(rule.ruleVal, unitsDef)
+                var sortableElement =
+                    `<div class="sortable-item" id="${id}">${res}</div>`;
+                sortableList1 = sortableList1 + sortableElement;
+            });
+
+            $("#osy-indFormulaSort1").html(sortableList1);
+            $("#osy-indFormulaSort1").jqxSortable();
+
+            $("#osy-indFormulaSort1, #osy-indFormulaSort2").jqxSortable({
+                connectWith: ".osy-indRuleSort",
+                opacity: 0.5,
+            });
+        }
+    }
+
+
 
     static ResStats(model){
         //console.log('model res html ', model)

@@ -26,7 +26,7 @@ export class Routes {
         //settings 
         import('../App/Controller/Settings.js')
         .then(Settings => {
-            $( ".demo" ).load( 'App/View/Settings.html', function() {
+            $( "#osy-demo" ).load( 'App/View/Settings.html', function() {
                 Settings.default.Load();
             });
         });
@@ -42,6 +42,17 @@ export class Routes {
                 });
             });
         }); 
+
+        // crossroads.addRoute('/Settings', function() {
+        //     $('#content').html('<h1 class="ajax-loading-animation"><i class="fa fa-cog fa-spin"></i> Loading...</h1>');
+        //     import('../App/Controller/Settings.js')
+        //     .then(Settings => {
+        //         $( "#osy-demo" ).load( 'App/View/Settings.html', function() {
+        //             Settings.default.Load();
+        //         });
+        //     });
+        // }); 
+
         crossroads.addRoute('/Config', function() {
             $('#content').html('<h1 class="ajax-loading-animation"><i class="fa fa-cog fa-spin"></i> Loading...</h1>');
             import('../App/Controller/Config.js')
@@ -107,6 +118,16 @@ export class Routes {
                 $( ".osy-content" ).load( 'App/View/DataFile.html', function() {
                     localStorage.setItem("osy-pageId", "DataFile");
                     DataFile.default.onLoad();
+                });
+            });
+        });
+        crossroads.addRoute('/ModelFile', function() {
+            $('#content').html('<h1 class="ajax-loading-animation"><i class="fa fa-cog fa-spin"></i> Loading...</h1>');
+            import('../App/Controller/ModelFile.js')
+            .then(ModelFile => {
+                $( ".osy-content" ).load( 'App/View/ModelFile.html', function() {
+                    localStorage.setItem("osy-pageId", "ModelFile");
+                    ModelFile.default.onLoad();
                 });
             });
         });

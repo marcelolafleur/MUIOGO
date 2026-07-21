@@ -9,6 +9,7 @@ from Classes.Case.CaseClass import Case
 from Classes.Case.UpdateCaseClass import UpdateCase
 from Classes.Case.ImportTemplate import ImportTemplate
 from Classes.Base.SyncS3 import SyncS3
+from utils import validate_json_fields
 
 case_api = Blueprint('CaseRoute', __name__)
 
@@ -69,6 +70,9 @@ def getDesc():
 @case_api.route("/copyCase", methods=['POST'])
 def copy():
     try:
+        err, code = validate_json_fields('casename')
+        if err:
+            return err, code
         case = request.json['casename']
         active_case = session.get('osycase')
 
@@ -102,11 +106,14 @@ def copy():
     except(IOError):
         raise IOError
     except OSError:
-        raise OSError
+        return jsonify({'message': 'A filesystem error occurred.', 'status_code': 'error'}), 500
 
 @case_api.route("/deleteCase", methods=['POST'])
 def deleteCase():
     try:
+        err, code = validate_json_fields('casename')
+        if err:
+            return err, code
         case = request.json['casename']
         active_case = session.get('osycase')
 
@@ -127,7 +134,7 @@ def deleteCase():
     except(IOError):
         return jsonify('No existing cases!'), 404
     except OSError:
-        raise OSError
+        return jsonify({'message': 'A filesystem error occurred.', 'status_code': 'error'}), 500
 
 @case_api.route("/getResultData", methods=['POST'])
 def getResultData():
@@ -182,18 +189,27 @@ def resultsExists():
 @case_api.route("/saveParamFile", methods=['POST'])
 def saveParamFile():
     try:
+        err, code = validate_json_fields('ParamData', 'VarData', 'DualData', 'IndicatorData')
+        if err:
+            return err, code
         ParamData = request.json['ParamData']
         VarData = request.json['VarData']
+        DualData = request.json['DualData']
+        IndicatorData = request.json['IndicatorData']
 
         paramPath = Path(Config.DATA_STORAGE, 'Parameters.json')
         varPath = Path(Config.DATA_STORAGE, 'Variables.json')
+        dualPath = Path(Config.DATA_STORAGE, 'Duals.json')
+        indicatorPath = Path(Config.DATA_STORAGE, 'Indicators.json')
         File.writeFile( ParamData, paramPath)
         File.writeFile( VarData, varPath)
+        File.writeFile( DualData, dualPath)
+        File.writeFile( IndicatorData, indicatorPath)
         response = {
-            "message": "You have updated parameters & variables data!",
+            "message": "You have updated parameters, variables, duals and indicators data!",
             "status_code": "success"
         }
-       
+
         return jsonify(response), 200
     except(IOError):
         return jsonify('No existing cases!'), 404
@@ -201,6 +217,9 @@ def saveParamFile():
 @case_api.route("/saveScOrder", methods=['POST'])
 def saveScOrder():
     try:
+        err, code = validate_json_fields('data', 'casename')
+        if err:
+            return err, code
         data = request.json['data']
         case = request.json['casename']
         genDataPath = Path(Config.DATA_STORAGE, case, 'genData.json')
@@ -247,6 +266,9 @@ def updateData():
 @case_api.route("/saveCase", methods=['POST'])
 def saveCase():
     try:
+        err, code = validate_json_fields('data')
+        if err:
+            return err, code
         genData = request.json['data']
         casename = genData['osy-casename']
         case = session.get('osycase', None)
@@ -433,6 +455,8 @@ def prepareCSV():
 def downloadCSV():
     try:
         casename = session.get('osycase', None)
+        if casename is None:
+            return jsonify({'message': 'No active session. Please select a model first.', 'status_code': 'error'}), 400
         dataFile = Path(Config.DATA_STORAGE,casename,'export.csv')
         
         dir = Path(Config.DATA_STORAGE,casename)

@@ -2,6 +2,25 @@ from pathlib import Path
 import logging
 import os
 import secrets
+import sys
+import warnings
+from logging.handlers import TimedRotatingFileHandler
+
+# Fail fast: unsupported Python hits cryptic pandas/numpy import errors without this.
+SUPPORTED_PYTHON_MIN = (3, 10)
+SUPPORTED_PYTHON_MAX = (3, 13)
+
+if not (SUPPORTED_PYTHON_MIN <= sys.version_info[:2] < SUPPORTED_PYTHON_MAX):
+    detected_version = ".".join(str(part) for part in sys.version_info[:3])
+    min_str = f"{SUPPORTED_PYTHON_MIN[0]}.{SUPPORTED_PYTHON_MIN[1]}"
+    max_str = f"{SUPPORTED_PYTHON_MAX[0]}.{SUPPORTED_PYTHON_MAX[1] - 1}"
+    print(
+        f"Unsupported Python version: {detected_version}\n"
+        f"MUIOGO currently supports Python {min_str} to {max_str} (recommended: 3.11).\n"
+        "Use scripts/setup.sh or scripts\\setup.bat with a supported Python installation.",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
 
 from flask import Flask, jsonify, request, session, render_template
 from flask_cors import CORS
@@ -16,32 +35,54 @@ from Routes.Case.CaseRoute import case_api
 from Routes.Case.SyncS3Route import syncs3_api
 from Routes.Case.ViewDataRoute import viewdata_api
 from Routes.DataFile.DataFileRoute import datafile_api
+from Routes.OGCore.OGCoreInstallRoute import ogcore_install_api
 
-#RADI
-# -------------------------
-# FIX: Make template/static paths independent of cwd
-# -------------------------
+def _configure_logging():
+    if getattr(_configure_logging, "_configured", False):
+        return getattr(_configure_logging, "_log_path", None)
 
-# This file is in: API/app.py
-# So project root is 1 level up
-BASE_DIR = Path(__file__).resolve().parents[1]
-WEBAPP_PATH = BASE_DIR / "WebAPP"
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
 
-template_dir = str(WEBAPP_PATH)
-static_dir = str(WEBAPP_PATH)
+    formatter = logging.Formatter("%(asctime)s [%(name)s] %(levelname)s: %(message)s")
 
-# template_dir = Config.WebAPP_PATH.resolve()
-# static_dir = Config.WebAPP_PATH.resolve()
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    console_handler._muiogo_handler = True
+    logger.addHandler(console_handler)
 
-# template_dir = os.path.join(sys._MEIPASS, 'WebAPP') 
-# static_dir = os.path.join(sys._MEIPASS, 'WebAPP') 
+    log_path = None
+    try:
+        log_path = Config.get_runtime_log_path()
+        file_handler = TimedRotatingFileHandler(
+            log_path, when="midnight", interval=1, backupCount=7, encoding="utf-8"
+        )
+        file_handler.setFormatter(formatter)
+        file_handler._muiogo_handler = True
+        logger.addHandler(file_handler)
+    except OSError as exc:
+        logger.warning("Runtime log file unavailable. Continuing with console logging only: %s", exc)
 
-#gets absolute path
-# template_dir = Path('WebAPP').resolve()
-# static_dir = Path('../WebAPP').resolve()
+    logging.captureWarnings(True)
+    warnings.simplefilter("default")
 
-# template_dir = 'WebAPP'
-# static_dir = '../WebAPP'
+    def log_exception(exc_type, exc_value, exc_traceback):
+        if issubclass(exc_type, KeyboardInterrupt):
+            sys.__excepthook__(exc_type, exc_value, exc_traceback)
+            return
+        logger.error("UNCAUGHT EXCEPTION", exc_info=(exc_type, exc_value, exc_traceback))
+
+    sys.excepthook = log_exception
+
+    _configure_logging._configured = True
+    _configure_logging._log_path = log_path
+    return log_path
+
+
+RUNTIME_LOG_PATH = _configure_logging()
+
+template_dir = str(Config.WEBAPP_PATH)
+static_dir = str(Config.WEBAPP_PATH)
 
 app = Flask(__name__, static_url_path='', static_folder=static_dir,  template_folder=template_dir)
 
@@ -49,7 +90,7 @@ app.permanent_session_lifetime = timedelta(days=5)
 secret_key = os.environ.get("MUIOGO_SECRET_KEY", "").strip()
 if not secret_key:
     secret_key = secrets.token_hex(32)
-    logging.warning(
+    logging.getLogger(__name__).warning(
         "MUIOGO_SECRET_KEY is not configured. Using a temporary in-memory key. "
         "Run setup to create a persistent secret in .env."
     )
@@ -63,22 +104,9 @@ app.register_blueprint(case_api)
 app.register_blueprint(viewdata_api)
 app.register_blueprint(datafile_api)
 app.register_blueprint(syncs3_api)
+app.register_blueprint(ogcore_install_api)
 
-CORS(app)
-
-#potrebno kad je front end na drugom serveru 127.0.0.1
-@app.after_request
-def add_headers(response):
-    if Config.HEROKU_DEPLOY == 0: 
-        #localhost
-        response.headers.add('Access-Control-Allow-Origin', 'http://127.0.0.1')
-    else:
-        #HEROKU
-        response.headers.add('Access-Control-Allow-Origin', 'https://osemosys.herokuapp.com/')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-    #response.headers['Content-Type'] = 'application/javascript'
-    return response
+CORS(app, origins=Config.CORS_ORIGINS, supports_credentials=True)
 
 # @app.errorhandler(CustomException)
 # def handle_invalid_usage(error):
@@ -97,7 +125,7 @@ def home():
     #         syncS3.downloadSync(case, Config.DATA_STORAGE, Config.S3_BUCKET)
     #     #downoload param file from S3 bucket
     #     syncS3.downloadSync('Parameters.json', Config.DATA_STORAGE, Config.S3_BUCKET)
-    return render_template('index.html')
+    return render_template('index.html', api_base_url=Config.API_BASE_URL)
 
 
 @app.route("/getSession", methods=['GET'])
@@ -119,7 +147,6 @@ def setSession():
             session.pop('osycase', None)
             return jsonify({"osycase": None}), 200
 
-        from pathlib import Path
         if not Path(Config.DATA_STORAGE, cs).is_dir():
             return jsonify({'message': 'Case not found.', 'status_code': 'error'}), 404
         session['osycase'] = cs

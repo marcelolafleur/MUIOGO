@@ -1,9 +1,10 @@
 from pathlib import Path
 import os
+import tempfile
 from dotenv import load_dotenv
 import platform
 
-# Central path validation utility (prevents path traversal)
+# Central path validation utility (prevents path traversal).
 def validate_path(base_dir, user_input):
     base_raw = os.fspath(base_dir)
     user_raw = "" if user_input is None else os.fspath(user_input)
@@ -62,6 +63,10 @@ DATA_STORAGE = WEBAPP_PATH / "DataStorage"
 CLASS_FOLDER = WEBAPP_PATH / "Classes"
 SOLVERs_FOLDER = WEBAPP_PATH / "SOLVERs"
 EXTRACT_FOLDER = BASE_DIR
+PRIMARY_RUNTIME_DIR = BASE_DIR / ".runtime"
+PRIMARY_RUNTIME_LOG_DIR = PRIMARY_RUNTIME_DIR / "logs"
+TEMP_RUNTIME_LOG_DIR = Path(tempfile.gettempdir()) / "muiogo-runtime" / "logs"
+_RUNTIME_LOG_PATH = None
 
 # Ensure DataStorage exists
 DATA_STORAGE.mkdir(parents=True, exist_ok=True)
@@ -69,6 +74,98 @@ DATA_STORAGE.mkdir(parents=True, exist_ok=True)
 # Validate writability instead of forcing permissions
 if not os.access(DATA_STORAGE, os.W_OK):
     raise PermissionError(f"Data storage path is not writable: {DATA_STORAGE}")
+
+# -------------------------
+# OG-Core calibration install + registry layer
+# -------------------------
+# OG country models live in their OWN uv environments, installed by the OG-Core
+# Universal Installer. MUIOGO neither installs nor imports OG-Core; it drives the
+# installer and tracks what is installed.
+
+# MUIOGO-side OG state (registry, install-job state, caches) lives at the user level
+# under ~/.muiogo, never inside the CLEWS DataStorage tree and never inside a
+# calibration's .venv. Keeping it out of DataStorage is what stops the CLEWS case
+# picker (and the other DataStorage walkers) from treating it as a case. See #500.
+OGC_DATA_STORAGE = Path(
+    os.environ.get("MUIOGO_OG_DATA_DIR", "").strip()
+    or (Path.home() / ".muiogo" / "og-state")
+)
+OGC_INSTALLED_REGISTRY = OGC_DATA_STORAGE / "og_calibrations_installed.json"
+OGC_INSTALL_JOBS_DIR = OGC_DATA_STORAGE / "install_jobs"
+OGC_CATALOG_CACHE = OGC_DATA_STORAGE / "catalog_cache.json"
+OGC_INSTALLER_CACHE_DIR = OGC_DATA_STORAGE / "installer"
+
+# Calibration environments install OUTSIDE the repo. Default ~/.muiogo/og-models,
+# overridable so a user can point installs elsewhere. A country lands at
+# OGC_MODELS_DIR/<RepoName>/ with its own .venv.
+OGC_MODELS_DIR = Path(
+    os.environ.get("MUIOGO_OG_MODELS_DIR", "").strip()
+    or (Path.home() / ".muiogo" / "og-models")
+)
+
+# Where the installer's machine-readable catalogue and scripts are fetched from.
+# Env overrides let tests/offline runs point at a local mirror.
+_OGC_INSTALLER_RAW_BASE = (
+    os.environ.get("MUIOGO_OG_INSTALLER_RAW_BASE", "").strip()
+    or "https://raw.githubusercontent.com/PSLmodels/OG-Core/master/scripts"
+)
+OGC_INSTALLER_REPOS_JSON_URL = (
+    os.environ.get("MUIOGO_OG_INSTALLER_REPOS_JSON_URL", "").strip()
+    or f"{_OGC_INSTALLER_RAW_BASE}/repos.json"
+)
+OGC_INSTALLER_SH_URL = (
+    os.environ.get("MUIOGO_OG_INSTALLER_SH_URL", "").strip()
+    or f"{_OGC_INSTALLER_RAW_BASE}/install.sh"
+)
+OGC_INSTALLER_PS1_URL = (
+    os.environ.get("MUIOGO_OG_INSTALLER_PS1_URL", "").strip()
+    or f"{_OGC_INSTALLER_RAW_BASE}/install.ps1"
+)
+
+
+def venv_python_path(venv_dir):
+    """Return the interpreter inside a uv/venv directory for this platform.
+
+    Windows: <venv>/Scripts/python.exe. macOS/Linux: <venv>/bin/python.
+    """
+    venv_dir = Path(venv_dir)
+    if SYSTEM == "Windows":
+        return venv_dir / "Scripts" / "python.exe"
+    return venv_dir / "bin" / "python"
+
+
+def ogc_clean_env():
+    """A copy of os.environ with any active venv/conda markers stripped.
+
+    The universal installer refuses to run when a virtualenv or conda env is
+    active, and MUIOGO itself runs inside its own venv. Spawn installer/uv
+    subprocesses with this env so the guard does not abort every install.
+    """
+    env = os.environ.copy()
+    for marker in ("VIRTUAL_ENV", "CONDA_DEFAULT_ENV", "CONDA_PREFIX", "CONDA_SHLVL"):
+        env.pop(marker, None)
+    return env
+
+
+def get_runtime_log_path():
+    global _RUNTIME_LOG_PATH
+
+    if _RUNTIME_LOG_PATH is not None:
+        return _RUNTIME_LOG_PATH
+
+    for log_dir in (PRIMARY_RUNTIME_LOG_DIR, TEMP_RUNTIME_LOG_DIR):
+        try:
+            log_dir.mkdir(parents=True, exist_ok=True)
+            probe = log_dir / ".write_test"
+            with open(probe, "a", encoding="utf-8"):
+                pass
+            probe.unlink(missing_ok=True)
+            _RUNTIME_LOG_PATH = log_dir / "app.log"
+            return _RUNTIME_LOG_PATH
+        except OSError:
+            continue
+
+    raise PermissionError("No writable runtime log directory is available.")
 #absolute paths
 # OSEMOSYS_ROOT = os.path.abspath(os.getcwd())
 # UPLOAD_FOLDER = Path(OSEMOSYS_ROOT, 'WebAPP')
@@ -81,6 +178,21 @@ if not os.access(DATA_STORAGE, os.W_OK):
 HEROKU_DEPLOY = 0
 AWS_SYNC = 0
 
+# API base URL: configurable via MUIOGO_API_URL env var.
+# Defaults to window.location.origin on the frontend when not set.
+API_BASE_URL = os.environ.get("MUIOGO_API_URL", "")
+
+# CORS allowed origins: configurable via MUIOGO_CORS_ORIGINS env var.
+# Accepts a comma-separated list. Defaults to localhost origins for local dev.
+CORS_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get(
+        "MUIOGO_CORS_ORIGINS",
+        "http://127.0.0.1:5002,http://localhost:5002,http://127.0.0.1,http://localhost"
+    ).split(",")
+    if origin.strip()
+]
+
 PINNED_COLUMNS = ('Sc', 'Tech', 'Comm', 'Emis','Stg', 'Ts', 'MoO', 'UnitId', 'Se','Dt', 'Dtb', 'paramName','TechName', 'CommName', 'EmisName', 'ConName', 'MoId')
 
 TECH_GROUPS = ('RYT', 'RYTM', 'RYTC', 'RYTCn', 'RYTCM', 'RYTE', 'RYTEM', 'RYTTs')
@@ -90,74 +202,10 @@ EMIS_GROUPS = ('RYE', 'RYTE', 'RYTEM')
 SINGLE_TECH_GROUPS = ['RT']
 SINGLE_EMIS_GROUPS = ['RE']
 
-#full var list 38
-VARIABLES_C = {
-        'NewCapacity':['r','t','y'],
-        'AccumulatedNewCapacity':['r','t','y'],
-        'TotalCapacityAnnual':['r','t','y'],
-        'CapitalInvestment':['r','t','y'],
-        'AnnualVariableOperatingCost':['r','t','y'],
-        'AnnualFixedOperatingCost':['r','t','y'],
-        'SalvageValue':['r','t','y'],
-        'DiscountedSalvageValue':['r','t','y'],
-        'TotalTechnologyAnnualActivity':['r','t','y'],
-        'RateOfActivity':['r','l','t','m','y'],
-        'RateOfTotalActivity':['r','t','l','y'],
-        'Demand':['r','l','f','y'],
-        'TotalAnnualTechnologyActivityByMode':['r','t','m','y'],
-        'TotalTechnologyModelPeriodActivity':['r','t'],
-        'ProductionByTechnology':['r','l','t','f','y'],
-        'ProductionByTechnologyAnnual':['r','t','f','y'],
-        'AnnualTechnologyEmissionByMode':['r','t','e','m','y'],
-        'EmissionByActivityChange':['r','t','e','m','y'],
-        'AnnualTechnologyEmission':['r','t','e','y'],
-        'AnnualEmissions':['r','e','y'],
-        'DiscountedTechnologyEmissionsPenalty':['r','t','y'],
-        'TechnologyEmissionsPenalty':['r','t','y'],
-        'RateOfProductionByTechnology':['r','l','t','f','y'],
-        'RateOfUseByTechnology':['r','l','t','f','y'],
-        'UseByTechnology':['r','l','t','f','y'],
-        'UseByTechnologyAnnual':['r','t','f','y'],
-        'RateOfProductionByTechnologyByMode':['r','l','t','m','f','y'],
-        'RateOfUseByTechnologyByMode':['r','l','t','m','f','y'],
-        'TechnologyActivityChangeByMode':['r','t','m','y'],
-        'TechnologyActivityChangeByModeCostTotal':['r','t','m','y'],
-        'InputToNewCapacity':['r','t','f','y'],
-        'InputToTotalCapacity':['r','t','f','y'],
-        'DiscountedCapitalInvestment':['r','t','y'],
-        'DiscountedOperatingCost':['r','t','y'],
-        'TotalDiscountedCostByTechnology':['r','t','y'],
-        'NewStorageCapacity':['r','s','y'],
-        'SalvageValueStorage':['r','s','y'],
-        'NumberOfNewTechnologyUnits':['r','t','y'],
-        'Trade':['r','rr','l','f','y'],
-        'RateOfNetStorageActivity':['r','s','ls','ld','lh','y'],
-        'NetChargeWithinDay': ['r','s','ls','ld','lh','y'],
-        'NetChargeWithinYear':['r','s','ls','ld','lh','y'],
-        'StorageLevelYearStart': ['r','s','y'],
-        'StorageLevelYearFinish': ['r','s','y'],
-        'StorageLevelSeasonStart':['r','s','ls','y'],
-        'StorageLevelSeasonFinish':['r','s','ls','y'],
-        'StorageLevelDayTypeStart': ['r','s','ls','ld','y'],
-        'StorageLevelDayTypeFinish': ['r','s','ls','ld','y'],
-        'AccumulatedNewStorageCapacity':['r','s','y'],
-        'StorageUpperLimit':['r','s','y'],
-        'CapitalInvestmentStorage':['r','s','y'],
-        'DiscountedCapitalInvestmentStorage':['r','s','y'],
-        'DiscountedSalvageValueStorage':['r','s','y'],
-        'TotalDiscountedStorageCost':['r','s','y'],
-        'EBb4_EnergyBalanceEachYear4_ICR': ['r','f','y'],
-        'E8_AnnualEmissionsLimit': ['r','e','y'],
-        'UDC1_UserDefinedConstraintInequality': ['r','cn','y'],
-        'UDC2_UserDefinedConstraintEquality': ['r','cn','y']
-    }
-
-DUALS = {
-    'EBb4_EnergyBalanceEachYear4_ICR': ['r','f','y'],
-    'E8_AnnualEmissionsLimit': ['r','e','y'],
-    'UDC1_UserDefinedConstraintInequality': ['r','cn','y'],
-    'UDC2_UserDefinedConstraintEquality': ['r','cn','y']
-}
+# Variable and dual definitions previously lived here as `VARIABLES_C` and
+# `DUALS`. Both moved to data files in #460 (Variables.json / Duals.json) with
+# a `setrelation` field on each entry, accessed at runtime via
+# OsemosysClass.VAR_BY_NAME / DUALS_BY_NAME — see docs/UPSTREAM_SYNC.md.
 
 #needed for validation of inputs
 PARAMETERS_C = {
