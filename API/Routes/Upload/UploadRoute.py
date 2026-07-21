@@ -1,5 +1,5 @@
 import shutil
-from flask import Blueprint, request, jsonify, send_file, after_this_request
+from flask import Blueprint, request, jsonify, send_file
 from zipfile import ZipFile
 from pathlib import Path
 from werkzeug.utils import secure_filename
@@ -213,15 +213,20 @@ def backupCase():
             #             # Add file to zip
             #             zipObj.write(filePath)   
 
-        @after_this_request
-        def remove_zip(response):
+        response = send_file(zippedFile.resolve(), as_attachment=True)
+
+        # call_on_close fires after the body has finished streaming (and the
+        # file handle is closed), so the zip survives the whole download and
+        # the delete also succeeds on Windows, where removing an in-use file
+        # would fail.
+        def remove_zip():
             try:
                 os.remove(zippedFile)
             except OSError:
                 pass
-            return response
 
-        return send_file(zippedFile.resolve(), as_attachment=True)
+        response.call_on_close(remove_zip)
+        return response
 
     except PermissionError:
         return jsonify({"error": "Invalid path"}), 400
