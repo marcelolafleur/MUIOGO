@@ -760,7 +760,7 @@ def uploadXls():
                     "message": "Template " + submitted_file +" is not valid .xlsx file!",
                     "status_code": "warning",
                     "casename": case,
-                    "template": filename
+                    "template": submitted_file
                 })
 
         response = {
