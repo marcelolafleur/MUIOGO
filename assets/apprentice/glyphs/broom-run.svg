@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" role="img" aria-label="a worker running">
+  <title>a worker running</title>
+  <g transform="translate(-7.52,2.21) scale(0.9310)" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round" fill="none">
+    <path d="M44,3 L30,33" stroke-width="4.6" stroke="currentColor"/>
+    <path d="M25,31 L36,34 L45,55 L15,59 Z" fill="currentColor" fill-opacity=".16" stroke-width="3.4"/>
+    <path d="M24,37 L34,39" stroke-width="3"/>
+  </g>
+  <g stroke="currentColor" stroke-width="2.8" stroke-linecap="round" fill="none" stroke-opacity=".6">
+    <path d="M46,26 Q54,33 50,41"/>
+    <path d="M53,21 Q62,32 56,45"/>
+  </g>
+</svg>

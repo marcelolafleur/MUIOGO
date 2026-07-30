@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" role="img" aria-label="workers running in parallel">
+  <title>workers running in parallel</title>
+  <g transform="translate(-6.83,15.93) scale(0.6897)" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round" fill="none">
+    <path d="M44,3 L30,33" stroke-width="4.6" stroke="currentColor"/>
+    <path d="M25,31 L36,34 L45,55 L15,59 Z" fill="currentColor" fill-opacity=".16" stroke-width="3.4"/>
+    <path d="M24,37 L34,39" stroke-width="3"/>
+  </g>
+  <g transform="translate(4.21,7.52) scale(0.8276)" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round" fill="none">
+    <path d="M44,3 L30,33" stroke-width="4.6" stroke="currentColor"/>
+    <path d="M25,31 L36,34 L45,55 L15,59 Z" fill="currentColor" fill-opacity=".16" stroke-width="3.4"/>
+    <path d="M24,37 L34,39" stroke-width="3"/>
+  </g>
+  <g transform="translate(25.17,15.93) scale(0.6897)" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round" fill="none">
+    <path d="M44,3 L30,33" stroke-width="4.6" stroke="currentColor"/>
+    <path d="M25,31 L36,34 L45,55 L15,59 Z" fill="currentColor" fill-opacity=".16" stroke-width="3.4"/>
+    <path d="M24,37 L34,39" stroke-width="3"/>
+  </g>
+</svg>

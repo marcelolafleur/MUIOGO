@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" role="img" aria-label="worker finished">
+  <title>worker finished</title>
+  <g transform="translate(-2.55,4.62) scale(0.7931)" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round" fill="none">
+    <path d="M44,3 L30,33" stroke-width="4.6" stroke="currentColor"/>
+    <path d="M25,31 L36,34 L45,55 L15,59 Z" fill="currentColor" fill-opacity=".16" stroke-width="3.4"/>
+    <path d="M24,37 L34,39" stroke-width="3"/>
+  </g>
+  <path d="M40,46 L46,52 L56,39" fill="none" stroke="#4ADE80" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" role="img" aria-label="a worker, queued">
+  <title>a worker, queued</title>
+  <g transform="translate(0,0)" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round" fill="none">
+    <path d="M44,3 L30,33" stroke-width="4.6" stroke="currentColor"/>
+    <path d="M25,31 L36,34 L45,55 L15,59 Z" fill="currentColor" fill-opacity=".16" stroke-width="3.4"/>
+    <path d="M24,37 L34,39" stroke-width="3"/>
+    <path d="M28,41 L23,56" stroke-width="2.4" stroke-opacity=".75"/>
+    <path d="M34,42 L36,54" stroke-width="2.4" stroke-opacity=".75"/>
+  </g>
+</svg>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" role="img" aria-label="the hat - the orchestrator">
+  <title>the hat - the orchestrator</title>
+  <g stroke="currentColor" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M19,45 C19,33 21,21 27,12 C30,7 37,3 42,6 C38,12 36,20 35,28 C34,38 37,45 45,47 Z"/>
+    <path d="M10,46 C10,41 20,38 32,38 C44,38 54,41 54,46 C54,51 44,54 32,54 C20,54 10,51 10,46 Z"/>
+    <path d="M20,36 C25,40 32,40 36,35" stroke="#FFB01F"/>
+  </g>
+  <path d="M55,10 Q55.85,14.15 60,15 Q55.85,15.85 55,20 Q54.15,15.85 50,15 Q54.15,14.15 55,10 Z" fill="#FFB01F" fill-opacity="1.0" stroke="none"/>
+  <path d="M59,23.6 Q59.578,26.422 62.4,27 Q59.578,27.578 59,30.4 Q58.422,27.578 55.6,27 Q58.422,26.422 59,23.6 Z" fill="#38BDF8" fill-opacity="1.0" stroke="none"/>
+</svg>
