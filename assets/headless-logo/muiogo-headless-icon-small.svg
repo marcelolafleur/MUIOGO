@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="MUIOGO-AI headless mode (small)">
+  <title>MUIOGO-AI headless mode (small)</title>
+  <defs>
+    <linearGradient id="d-gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFE985"/><stop offset=".55" stop-color="#FFC02E"/><stop offset="1" stop-color="#E8890C"/>
+    </linearGradient>
+    <linearGradient id="d-frill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E29A12"/><stop offset="1" stop-color="#B06103"/>
+    </linearGradient>
+    <linearGradient id="d-horn" x1="0" y1="1" x2=".3" y2="0">
+      <stop offset="0" stop-color="#E8930D"/><stop offset="1" stop-color="#FFE79B"/>
+    </linearGradient>
+    <linearGradient id="d-tongue" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FF8FAE"/><stop offset="1" stop-color="#E2456F"/>
+    </linearGradient>
+    <linearGradient id="w-cool" x1="0" y1="0" x2=".85" y2="1">
+      <stop offset="0" stop-color="#8AE7FF"/><stop offset=".45" stop-color="#4FA8FF"/><stop offset="1" stop-color="#9B6BFF"/>
+    </linearGradient>
+    <linearGradient id="w-warm" x1="0" y1="0" x2=".3" y2="1">
+      <stop offset="0" stop-color="#FFE066"/><stop offset=".5" stop-color="#FFB01F"/><stop offset="1" stop-color="#FF7A00"/>
+    </linearGradient>
+    <radialGradient id="bg" cx=".5" cy=".38" r=".78">
+      <stop offset="0" stop-color="#132540"/><stop offset="1" stop-color="#060D18"/>
+    </radialGradient>
+    <radialGradient id="halo" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#FFB320" stop-opacity=".22"/><stop offset="1" stop-color="#FFB320" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#bg)"/>
+  <g transform="translate(58.07,53.10) scale(1.9793)" stroke="#0E1B2E" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M73.7,54.6 Q66.0,51.8 53.3,44.0 Q47.9,69.8 50.7,77.5 Q42.7,79.5 27.9,80.1 Q37.7,104.5 44.3,109.4 Q38.7,115.5 26.7,124.2 Q48.5,139.1 56.7,139.5 Q55.5,147.6 50.4,161.6 Q76.7,161.8 83.7,157.6 Q87.2,165.0 109.3,179.4 Q112.8,165.0 116.3,157.6 Q123.3,161.8 149.6,161.6 Q144.5,147.6 143.3,139.5 Q151.5,139.1 173.3,124.2 Q161.3,115.5 155.7,109.4 Q162.3,104.5 172.1,80.1 Q157.3,79.5 149.3,77.5 Q152.1,69.8 146.7,44.0 Q134.0,51.8 126.3,54.6 L135.8,82.0 L142.0,103.1 L136.7,124.5 L121.3,140.2 L100.0,146.0 L78.7,140.2 L63.3,124.5 L58.0,103.1 L64.2,82.0 L80.3,66.9 Z" fill="url(#d-frill)" stroke-width="4.5"/>
+    <g fill="url(#d-horn)" stroke-width="4.8">
+      <path d="M65.9,67.4 C48.0,50.0 30.0,30.0 34.0,8.0 C48.0,30.0 62.0,44.0 82.1,57.3 Z"/>
+      <path d="M134.1,67.4 C152.0,50.0 170.0,30.0 166.0,8.0 C152.0,30.0 138.0,44.0 117.9,57.3 Z"/>
+    </g>
+    <path d="M100,52 C130,52 151,70 152,96 C153,118 145,132 132,142 C121,150 112,155 100,155 C88,155 79,150 68,142 C55,132 47,118 48,96 C49,70 70,52 100,52 Z" fill="url(#d-gold)" stroke-width="5.6"/>
+    <circle cx="74" cy="95" r="21" fill="#fff" stroke-width="5.0"/>
+    <circle cx="128" cy="91" r="22.5" fill="#fff" stroke-width="5.0"/>
+    <circle cx="65" cy="93" r="8.8" fill="#0E1B2E" stroke="none"/>
+    <circle cx="137" cy="84" r="9.4" fill="#0E1B2E" stroke="none"/>
+    <circle cx="62" cy="89" r="3" fill="#fff" stroke="none"/>
+    <circle cx="134" cy="80" r="3.2" fill="#fff" stroke="none"/>
+    <path d="M100,120 C92,117 78,117 70,125 C61,134 66,149 78,151 C88,153 96,146 100,138 C104,146 112,153 122,151 C134,149 139,134 130,125 C122,117 108,117 100,120 Z" fill="#FFD968" stroke-width="4.5"/>
+    <path d="M92,104 C87,104 84,108 85,113 C86,119 93,122 100,122 C107,122 114,119 115,113 C116,108 113,104 108,104 Z" fill="#E89A10" stroke-width="4.2"/>
+    <circle cx="93.5" cy="112" r="2.2" fill="#0E1B2E" stroke="none"/>
+    <circle cx="106.5" cy="112" r="2.2" fill="#0E1B2E" stroke="none"/>
+    <path d="M110,146 C122,144 137,154 142,169 C146,184 135,196 122,192 C110,188 105,175 106,161 C107,152 106,148 110,146 Z" fill="url(#d-tongue)" stroke-width="5.0"/>
+  </g>
+</svg>
